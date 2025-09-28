@@ -1,0 +1,125 @@
+/* Custom styles for the agricultural GPS app */
+.leaflet-control-draw-toolbar {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.leaflet-draw-toolbar a {
+  background-color: #16a34a;
+  color: white;
+  border-radius: 4px;
+  margin: 2px;
+}
+
+.leaflet-draw-toolbar a:hover {
+  background-color: #15803d;
+}
+
+.area-item {
+  transition: all 0.2s ease;
+}
+
+.area-item:hover {
+  background-color: #f3f4f6;
+  transform: translateX(4px);
+}
+
+.area-item.selected {
+  background-color: #dcfce7;
+  border-left: 4px solid #16a34a;
+}
+
+.pulse-marker {
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.loading-spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Custom popup styles */
+.leaflet-popup-content-wrapper {
+  border-radius: 8px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+}
+
+.leaflet-popup-content {
+  margin: 12px 16px;
+  line-height: 1.4;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .container {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  #map {
+    height: 300px;
+  }
+}
+
+/* Make right column panels (product form + areas list) behave better on small screens
+   - allow the areas panel to expand to remaining viewport height
+   - let the areas list scroll internally instead of being clipped
+   - do not touch the map styles (only targets the right column elements) */
+@media (max-width: 1024px) {
+  /* the container that groups the two right-column cards */
+  .space-y-6 {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem; /* preserve spacing */
+    align-items: stretch;
+  }
+
+  /* let the areas panel grow and use column layout */
+  #areas-panel {
+    display: flex;
+    flex-direction: column;
+    /* allow it to expand to fill available vertical space */
+    flex: 1 1 auto;
+    min-height: 0; /* important for proper flexbox scrolling children */
+  }
+
+  /* make the scrollable list fill remaining space inside the panel */
+  #areas-list {
+    overflow-y: auto;
+    /* remove the strict max-height so it can expand inside the flex container */
+    max-height: none;
+    /* ensure the element can shrink/grow inside the flex layout */
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  /* also allow the products container to scroll if content is large */
+  #products-container {
+    overflow-y: auto;
+    max-height: calc(100vh - 480px);
+  }
+}
