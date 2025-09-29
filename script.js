@@ -16,14 +16,14 @@ class AgroGPSApp {
   init() {
     this.initMap()
     this.initEventListeners()
+    // Initialize drawn items layer BEFORE loading areas so loadAreas can add layers into it
+    this.drawnItems = new L.FeatureGroup()
+    this.map.addLayer(this.drawnItems)
+
     this.loadAreas()
     this.updateStats()
     this.updateAreasList()
-  this.updateAreaSelect()
-
-    // Initialize drawn items layer
-    this.drawnItems = new L.FeatureGroup()
-    this.map.addLayer(this.drawnItems)
+    this.updateAreaSelect()
 
     // Initialize draw control
     const drawControl = new L.Control.Draw({
@@ -247,6 +247,10 @@ class AgroGPSApp {
     this.updateStats()
     this.updateAreasList()
     this.updateAreaSelect()
+
+    // Auto-select the newly created area
+    document.getElementById('area-select').value = areaData.id
+    this.selectArea(areaData.id)
   }
 
   onAreaDeleted(e) {
@@ -288,6 +292,10 @@ class AgroGPSApp {
     this.saveData()
     this.updateStats()
     this.updateAreasList()
+    // Area sizes or names may have changed; update select and keep selection
+    const currentSelection = document.getElementById('area-select').value
+    this.updateAreaSelect()
+    if (currentSelection) document.getElementById('area-select').value = currentSelection
   }
 
   calculateArea(layer) {
@@ -483,6 +491,17 @@ class AgroGPSApp {
         item.classList.add("selected")
       }
     })
+
+    // Update selected area hectares display
+    const label = document.getElementById('selected-area-hectares')
+    const areaObj = this.areas.find((a) => a.id === areaId)
+    if (label) {
+      if (areaObj) {
+        label.textContent = `Área: ${areaObj.area.toFixed(2)} ha`
+      } else {
+        label.textContent = 'Área: — ha'
+      }
+    }
   }
 
   selectAreaFromMap(areaId) {
