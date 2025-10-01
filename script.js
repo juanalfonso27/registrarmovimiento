@@ -746,7 +746,10 @@ class AgroGPSApp {
     const areaCol = collection(db, 'areas')
     for (const a of this.areas) {
       const ref = doc(areaCol, a.id)
-      await setDoc(ref, a)
+      // Firestore doesn't allow nested arrays (arrays that contain arrays).
+      // Coordinates are deeply nested arrays (GeoJSON style). Serialize them to a string before saving.
+      const payload = Object.assign({}, a, { coordinates: JSON.stringify(a.coordinates) })
+      await setDoc(ref, payload)
     }
 
     // Remove remote areas that no longer exist locally
@@ -790,7 +793,17 @@ class AgroGPSApp {
 
     // If remote has any data, treat it as source of truth and overwrite localStorage
     if (remoteAreas.length > 0 || remoteProducts.length > 0) {
-      this.areas = remoteAreas
+      // Parse coordinates that were serialized when saved to Firestore
+      this.areas = remoteAreas.map((ra) => {
+        if (ra && typeof ra.coordinates === 'string') {
+          try {
+            ra.coordinates = JSON.parse(ra.coordinates)
+          } catch (err) {
+            console.warn('No se pudo parsear coordinates desde Firestore para area', ra.id, err && err.message)
+          }
+        }
+        return ra
+      })
       this.products = remoteProducts
       // Persist locally as well
       localStorage.setItem('agro-areas', JSON.stringify(this.areas))
