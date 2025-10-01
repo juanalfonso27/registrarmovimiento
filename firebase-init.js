@@ -1,7 +1,7 @@
 // firebase-init.js
 // Inicializa Firebase y exporta helpers simples en window.firebaseDB
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js"
-import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-analytics.js"
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js"
+import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-analytics.js"
 import {
   getFirestore,
   collection,
@@ -10,7 +10,7 @@ import {
   doc,
   writeBatch,
   deleteDoc,
-} from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js"
+} from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js"
 
 // Configuración de Firebase (tu nuevo proyecto)
 const firebaseConfig = {
@@ -48,6 +48,52 @@ window.firebaseDB = {
     console.log('[firebase] saveAreas starting, count=', areas.length)
     const batch = writeBatch(db)
     const colRef = collection(db, 'areas')
+    
+    // Primero eliminar todos los documentos existentes
+    const snapshot = await getDocs(colRef)
+    snapshot.forEach((doc) => {
+      batch.delete(doc.ref)
+    })
+    
+    // Luego agregar los nuevos documentos
+    areas.forEach((area) => {
+      const docRef = doc(colRef)
+      batch.set(docRef, area)
+    })
+    
+    await batch.commit()
+    console.log('[firebase] saveAreas completed')
+  },
+
+  async saveProducts(products) {
+    console.log('[firebase] saveProducts starting, count=', products.length)
+    const batch = writeBatch(db)
+    const colRef = collection(db, 'products')
+    
+    // Primero eliminar todos los documentos existentes
+    const snapshot = await getDocs(colRef)
+    snapshot.forEach((doc) => {
+      batch.delete(doc.ref)
+    })
+    
+    // Luego agregar los nuevos documentos
+    products.forEach((product) => {
+      const docRef = doc(colRef)
+      batch.set(docRef, product)
+    })
+    
+    await batch.commit()
+    console.log('[firebase] saveProducts completed')
+  },
+
+  async getProducts() {
+    console.log('[firebase] getProducts starting')
+    const snap = await getDocs(collection(db, 'products'))
+    const products = []
+    snap.forEach((d) => products.push(d.data()))
+    console.log(`[firebase] getProducts loaded ${products.length} docs`)
+    return products
+  }
     // Simplificamos: borramos todo y reescribimos
     const existing = await getDocs(colRef)
     existing.forEach((d) => batch.delete(doc(db, 'areas', d.id)))
