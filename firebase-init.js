@@ -53,3 +53,10 @@ export async function saveTestDoc() {
     console.error('Error guardando doc de prueba', err)
   }
 }
+
+// Notify the page that Firebase is ready so other scripts can sync
+try {
+  window.dispatchEvent(new CustomEvent('firebase-ready', { detail: { app: firebaseApp } }))
+} catch (err) {
+  console.warn('No se pudo emitir evento firebase-ready:', err && err.message)
+}

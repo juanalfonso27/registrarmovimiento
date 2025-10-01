@@ -13,9 +13,15 @@ class AgroGPSApp {
     this.init()
   }
 
-  init() {
+  async init() {
     this.initMap()
     this.initEventListeners()
+    // Try to sync from Firestore (if available). This will replace local data if remote data exists.
+    try {
+      await this.syncFromFirestore()
+    } catch (err) {
+      console.warn('No se pudo sincronizar con Firestore en init:', err && err.message)
+    }
     // Initialize drawn items layer BEFORE loading areas so loadAreas can add layers into it
     this.drawnItems = new L.FeatureGroup()
     this.map.addLayer(this.drawnItems)
@@ -140,6 +146,19 @@ class AgroGPSApp {
       if (e.target && e.target.classList.contains("remove-product-line")) {
         const line = e.target.closest('.product-line')
         if (line) line.remove()
+      }
+    })
+
+    // If Firebase initializes after the app, listen for it and sync
+    window.addEventListener('firebase-ready', async () => {
+      try {
+        await this.syncFromFirestore()
+        this.updateStats()
+        this.updateAreasList()
+        this.updateAreaSelect()
+        this.loadAreas()
+      } catch (err) {
+        console.warn('Error syncing after firebase-ready:', err && err.message)
       }
     })
   }
@@ -312,6 +331,9 @@ class AgroGPSApp {
   }
 
   loadAreas() {
+    // Clear any existing drawn layers so reload is idempotent
+    if (this.drawnItems) this.drawnItems.clearLayers()
+
     this.areas.forEach((areaData) => {
       let layer
 
@@ -707,6 +729,73 @@ class AgroGPSApp {
   saveData() {
     localStorage.setItem("agro-areas", JSON.stringify(this.areas))
     localStorage.setItem("agro-products", JSON.stringify(this.products))
+    // Also attempt to save to Firestore (non-blocking)
+    this.saveToFirestore().catch((err) => {
+      console.warn('Error guardando en Firestore:', err && err.message)
+    })
+  }
+
+  // Save current areas/products to Firestore. Uses dynamic imports so script.js stays non-module.
+  async saveToFirestore() {
+    if (!window.firebaseDB) return
+    const db = window.firebaseDB
+    const mod = await import('https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js')
+    const { doc, setDoc, collection, getDocs, deleteDoc } = mod
+
+    // Upsert all areas
+    const areaCol = collection(db, 'areas')
+    for (const a of this.areas) {
+      const ref = doc(areaCol, a.id)
+      await setDoc(ref, a)
+    }
+
+    // Remove remote areas that no longer exist locally
+    const remoteAreasSnap = await getDocs(areaCol)
+    for (const d of remoteAreasSnap.docs) {
+      if (!this.areas.find((a) => a.id === d.id)) {
+        await deleteDoc(doc(areaCol, d.id))
+      }
+    }
+
+    // Upsert all products
+    const prodCol = collection(db, 'products')
+    for (const p of this.products) {
+      const ref = doc(prodCol, p.id)
+      await setDoc(ref, p)
+    }
+
+    // Remove remote products that no longer exist locally
+    const remoteProdSnap = await getDocs(prodCol)
+    for (const d of remoteProdSnap.docs) {
+      if (!this.products.find((p) => p.id === d.id)) {
+        await deleteDoc(doc(prodCol, d.id))
+      }
+    }
+  }
+
+  // Load data from Firestore if any exists; otherwise keep localStorage data
+  async syncFromFirestore() {
+    if (!window.firebaseDB) return
+    const db = window.firebaseDB
+    const mod = await import('https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js')
+    const { collection, getDocs } = mod
+
+    const areaCol = collection(db, 'areas')
+    const prodCol = collection(db, 'products')
+
+    const [areasSnap, prodsSnap] = await Promise.all([getDocs(areaCol), getDocs(prodCol)])
+
+    const remoteAreas = areasSnap.docs.map((d) => d.data())
+    const remoteProducts = prodsSnap.docs.map((d) => d.data())
+
+    // If remote has any data, treat it as source of truth and overwrite localStorage
+    if (remoteAreas.length > 0 || remoteProducts.length > 0) {
+      this.areas = remoteAreas
+      this.products = remoteProducts
+      // Persist locally as well
+      localStorage.setItem('agro-areas', JSON.stringify(this.areas))
+      localStorage.setItem('agro-products', JSON.stringify(this.products))
+    }
   }
 }
 
