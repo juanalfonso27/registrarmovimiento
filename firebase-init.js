@@ -48,24 +48,19 @@ window.firebaseDB = {
   },
 
   async saveAreas(areas) {
-    try {
-      const batch = writeBatch(db)
-      const colRef = collection(db, 'areas')
-      // Simplificamos: borramos todo y reescribimos
-      const existing = await getDocs(colRef)
-      existing.forEach((d) => batch.delete(doc(db, 'areas', d.id)))
+    const batch = writeBatch(db)
+    const colRef = collection(db, 'areas')
+    // Simplificamos: borramos todo y reescribimos
+    const existing = await getDocs(colRef)
+    existing.forEach((d) => batch.delete(doc(db, 'areas', d.id)))
 
-      areas.forEach((a) => {
-        const ref = doc(db, 'areas', a.id)
-        batch.set(ref, a)
-      })
+    areas.forEach((a) => {
+      const ref = doc(db, 'areas', a.id)
+      batch.set(ref, a)
+    })
 
-      await batch.commit()
-      return true
-    } catch (e) {
-      console.error('Error guardando areas en Firestore', e)
-      return false
-    }
+    await batch.commit()
+    return true
   },
 
   async getProducts() {
@@ -81,22 +76,17 @@ window.firebaseDB = {
   },
 
   async saveProducts(products) {
-    try {
-      const batch = writeBatch(db)
-      const colRef = collection(db, 'products')
-      const existing = await getDocs(colRef)
-      existing.forEach((d) => batch.delete(doc(db, 'products', d.id)))
+    const batch = writeBatch(db)
+    const colRef = collection(db, 'products')
+    const existing = await getDocs(colRef)
+    existing.forEach((d) => batch.delete(doc(db, 'products', d.id)))
 
-      products.forEach((p) => {
-        const ref = doc(db, 'products', p.id)
-        batch.set(ref, p)
-      })
+    products.forEach((p) => {
+      const ref = doc(db, 'products', p.id)
+      batch.set(ref, p)
+    })
 
-      await batch.commit()
-      return true
-    } catch (e) {
-      console.error('Error guardando products en Firestore', e)
-      return false
-    }
+    await batch.commit()
+    return true
   },
 }
