@@ -1,7 +1,7 @@
 // firebase-init.js
 // Inicializa Firebase y exporta helpers simples en window.firebaseDB
-import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js"
-import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-analytics.js"
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js"
+import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-analytics.js"
 import {
   getFirestore,
   collection,
@@ -10,7 +10,7 @@ import {
   doc,
   writeBatch,
   deleteDoc,
-} from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js"
+} from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js"
 
 // Configuración de Firebase (tu nuevo proyecto)
 const firebaseConfig = {
@@ -28,7 +28,7 @@ try {
   getAnalytics(app)
 } catch (e) {
   // Analytics puede fallar en entornos locales sin ventana segura
-  console.warn('Firebase analytics no disponible:', e.message)
+  console.warn('Firebase analytics no disponible:', e && e.message ? e.message : e)
 }
 
 const db = getFirestore(app)

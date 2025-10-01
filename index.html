@@ -7,10 +7,12 @@
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
+    <!-- Firebase compat scripts removed; using ES module imports from script.js -->
     
     <script src="https://cdn.tailwindcss.com"></script>
     
     <link rel="stylesheet" href="styles.css">
+    
 </head>
 <body class="bg-gradient-to-br from-green-50 to-amber-50 min-h-screen">
     <header class="bg-white shadow-lg border-b-4 border-green-600">
@@ -172,8 +174,7 @@
     <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
     
     <!-- Firebase init as a module (provides window.firebaseDB helpers) -->
-    <script type="module" src="firebase-init.js"></script>
 
-    <script src="script.js"></script>
+    <script type="module" src="script.js"></script>
 </body>
 </html>
