@@ -77,11 +77,11 @@ class AgroGPSApp {
     })
 
     const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-      attribution: 'Gabriel',
+      attribution: 'Esri',
       maxZoom: 19,
     })
 
-    // Add satellite as default
+    // para ver como sateliteeeee
     satelliteLayer.addTo(this.map)
 
     const baseMaps = {
@@ -93,13 +93,13 @@ class AgroGPSApp {
   }
 
   initEventListeners() {
-    // Product form submission (multiple products support)
+    
     document.getElementById("product-form").addEventListener("submit", (e) => {
       e.preventDefault()
       this.submitProducts()
     })
 
-    // Location button
+    // boton de ubicacion actual
     document.getElementById("locate-btn").addEventListener("click", () => {
       this.getUserLocation()
     })

@@ -1,117 +1,55 @@
-// firebase-init.js
-import {
-  collection,
-  getDocs,
-  setDoc,
-  doc,
-  writeBatch,
-  deleteDoc,
-} from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js"
+// Inicializa Firebase en el navegador usando módulos CDN (no requiere bundler)
+// Exporta referencias útiles en window para que el resto de la app las use.
 
-// Esperar a que db esté disponible
-let db;
-const waitForDb = new Promise((resolve) => {
-  const checkDb = () => {
-    if (window.db) {
-      db = window.db;
-      resolve();
-    } else {
-      setTimeout(checkDb, 100);
-    }
-  };
-  checkDb();
-});
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js'
+import { getAnalytics } from 'https://www.gstatic.com/firebasejs/9.22.2/firebase-analytics.js'
+import { getFirestore } from 'https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js'
+import { getAuth } from 'https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js'
+import { getStorage } from 'https://www.gstatic.com/firebasejs/9.22.2/firebase-storage.js'
 
-// Crear las funciones de Firebase después de que db esté disponible
-const initFirebase = async () => {
-  await waitForDb;
-  
-  window.firebaseDB = {
-    async getAreas() {
-      try {
-        console.log('[firebase] getAreas starting');
-        const snap = await getDocs(collection(db, 'areas'));
-        const areas = [];
-        snap.forEach((doc) => {
-          areas.push({ ...doc.data(), id: doc.id });
-        });
-        console.log(`[firebase] getAreas loaded ${areas.length} docs`);
-        return areas;
-      } catch (error) {
-        console.error('[firebase] Error getting areas:', error);
-        throw error;
-      }
-    },
+// Configuración proporcionada
+const firebaseConfig = {
+  apiKey: "AIzaSyDjFqNeLUSVv0LkZ8QlC6H5G_ApPg1GT4Y",
+  authDomain: "gabriel-bca01.firebaseapp.com",
+  projectId: "gabriel-bca01",
+  storageBucket: "gabriel-bca01.firebasestorage.app",
+  messagingSenderId: "1680436733",
+  appId: "1:1680436733:web:136f95ce654f66f1adfd94",
+  measurementId: "G-CEKEMFPWPD"
+}
 
-    async saveAreas(areas) {
-      try {
-        console.log('[firebase] saveAreas starting, count=', areas.length);
-        const batch = writeBatch(db);
-        const areasRef = collection(db, 'areas');
+// Inicializa
+const firebaseApp = initializeApp(firebaseConfig)
+let analytics = null
+try {
+  analytics = getAnalytics(firebaseApp)
+} catch (err) {
+  // Analytics puede fallar en entornos locales o brotando restringido
+  console.warn('Firebase Analytics no disponible:', err.message)
+}
 
-        // Obtener y eliminar documentos existentes
-        const snapshot = await getDocs(areasRef);
-        snapshot.forEach((doc) => {
-          batch.delete(doc.ref);
-        });
+// Inicializa otros SDKs
+const db = getFirestore(firebaseApp)
+const auth = getAuth(firebaseApp)
+const storage = getStorage(firebaseApp)
 
-        // Agregar nuevos documentos
-        areas.forEach((area) => {
-          const newDoc = doc(areasRef);
-          batch.set(newDoc, area);
-        });
+// Exponer en window para uso sencillo desde script.js
+window.firebaseApp = firebaseApp
+window.firebaseAnalytics = analytics
+window.firebaseDB = db
+window.firebaseAuth = auth
+window.firebaseStorage = storage
 
-        await batch.commit();
-        console.log('[firebase] saveAreas completed successfully');
-      } catch (error) {
-        console.error('[firebase] Error saving areas:', error);
-        throw error;
-      }
-    },
+console.log('Firebase inicializado', { app: firebaseApp, analytics })
 
-    async getProducts() {
-      try {
-        console.log('[firebase] getProducts starting');
-        const snap = await getDocs(collection(db, 'products'));
-        const products = [];
-        snap.forEach((doc) => {
-          products.push({ ...doc.data(), id: doc.id });
-        });
-        console.log(`[firebase] getProducts loaded ${products.length} docs`);
-        return products;
-      } catch (error) {
-        console.error('[firebase] Error getting products:', error);
-        throw error;
-      }
-    },
-
-    async saveProducts(products) {
-      try {
-        console.log('[firebase] saveProducts starting, count=', products.length);
-        const batch = writeBatch(db);
-        const productsRef = collection(db, 'products');
-
-        // Obtener y eliminar documentos existentes
-        const snapshot = await getDocs(productsRef);
-        snapshot.forEach((doc) => {
-          batch.delete(doc.ref);
-        });
-
-        // Agregar nuevos documentos
-        products.forEach((product) => {
-          const newDoc = doc(productsRef);
-          batch.set(newDoc, product);
-        });
-
-        await batch.commit();
-        console.log('[firebase] saveProducts completed successfully');
-      } catch (error) {
-        console.error('[firebase] Error saving products:', error);
-        throw error;
-      }
-    }
-  };
-};
-
-// Inicializar Firebase
-initFirebase().catch(console.error);
+// Ejemplo: función simple para escribir una colección de prueba
+export async function saveTestDoc() {
+  const { doc, setDoc, collection } = await import('https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js')
+  try {
+    const ref = doc(collection(db, 'test-areas'), Math.random().toString(36).slice(2, 9))
+    await setDoc(ref, { created: new Date().toISOString(), note: 'prueba desde firebase-init' })
+    console.log('Documento de prueba guardado')
+  } catch (err) {
+    console.error('Error guardando doc de prueba', err)
+  }
+}

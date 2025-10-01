@@ -7,12 +7,10 @@
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
-    <!-- Firebase compat scripts removed; using ES module imports from script.js -->
     
     <script src="https://cdn.tailwindcss.com"></script>
     
     <link rel="stylesheet" href="styles.css">
-    
 </head>
 <body class="bg-gradient-to-br from-green-50 to-amber-50 min-h-screen">
     <header class="bg-white shadow-lg border-b-4 border-green-600">
@@ -38,15 +36,6 @@
                     <div class="text-right">
                         <p class="text-sm text-gray-600">Hectáreas Totales</p>
                         <p class="text-xl font-bold text-amber-600" id="total-hectares">0.00</p>
-                    </div>
-                    <div class="text-right">
-                        <p class="text-sm text-gray-600">Sincronización</p>
-                        <div class="flex items-center gap-2">
-                            <span id="sync-status" class="text-xs text-gray-500">local</span>
-                            <button id="sync-btn" class="text-xs bg-white/10 hover:bg-white/20 text-white px-2 py-1 rounded-md">Forzar sync</button>
-                        </div>
-                        <div id="sync-error" class="text-xs text-red-600 truncate mt-1" title=""> </div>
-                        </div>
                     </div>
                 </div>
             </div>
@@ -172,37 +161,10 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
-    
-    <!-- Firebase App (the core Firebase SDK) -->
-    <script type="module">
-      import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js';
-      import { getFirestore } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js';
-      import { getAnalytics } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-analytics.js';
 
-      const firebaseConfig = {
-        apiKey: "AIzaSyDjFqNeLUSVv0LkZ8QlC6H5G_ApPg1GT4Y",
-        authDomain: "gabriel-bca01.firebaseapp.com",
-        projectId: "gabriel-bca01",
-        storageBucket: "gabriel-bca01.firebasestorage.app",
-        messagingSenderId: "1680436733",
-        appId: "1:1680436733:web:136f95ce654f66f1adfd94",
-        measurementId: "G-CEKEMFPWPD"
-      };
-
-      // Initialize Firebase
-      const app = initializeApp(firebaseConfig);
-      const db = getFirestore(app);
-      try {
-        getAnalytics(app);
-      } catch (e) {
-        console.warn('Firebase analytics no disponible:', e);
-      }
-
-      window.db = db; // Hacer disponible db globalmente
-    </script>
-
-    <!-- Firebase init as a module (provides window.firebaseDB helpers) -->
+    <!-- Firebase initialization (module) -->
     <script type="module" src="firebase-init.js"></script>
-    <script type="module" src="script.js"></script>
+
+    <script src="script.js"></script>
 </body>
 </html>
