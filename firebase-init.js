@@ -12,15 +12,15 @@ import {
   deleteDoc,
 } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js"
 
-// Configuración de Firebase (mantén la tuya)
+// Configuración de Firebase (tu nuevo proyecto)
 const firebaseConfig = {
-  apiKey: "AIzaSyDnHQx0ann2v5cWVT-wvRjFke_BLG5anpo",
-  authDomain: "datos-de-gabriel.firebaseapp.com",
-  projectId: "datos-de-gabriel",
-  storageBucket: "datos-de-gabriel.firebasestorage.app",
-  messagingSenderId: "512812286319",
-  appId: "1:512812286319:web:958a933d855100ef4e689a",
-  measurementId: "G-0CQM7DJJHB",
+  apiKey: "AIzaSyDjFqNeLUSVv0LkZ8QlC6H5G_ApPg1GT4Y",
+  authDomain: "gabriel-bca01.firebaseapp.com",
+  projectId: "gabriel-bca01",
+  storageBucket: "gabriel-bca01.firebasestorage.app",
+  messagingSenderId: "1680436733",
+  appId: "1:1680436733:web:136f95ce654f66f1adfd94",
+  measurementId: "G-CEKEMFPWPD",
 }
 
 const app = initializeApp(firebaseConfig)
