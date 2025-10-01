@@ -173,8 +173,36 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
     
-    <!-- Firebase init as a module (provides window.firebaseDB helpers) -->
+    <!-- Firebase App (the core Firebase SDK) -->
+    <script type="module">
+      import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js';
+      import { getFirestore } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js';
+      import { getAnalytics } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-analytics.js';
 
+      const firebaseConfig = {
+        apiKey: "AIzaSyDjFqNeLUSVv0LkZ8QlC6H5G_ApPg1GT4Y",
+        authDomain: "gabriel-bca01.firebaseapp.com",
+        projectId: "gabriel-bca01",
+        storageBucket: "gabriel-bca01.firebasestorage.app",
+        messagingSenderId: "1680436733",
+        appId: "1:1680436733:web:136f95ce654f66f1adfd94",
+        measurementId: "G-CEKEMFPWPD"
+      };
+
+      // Initialize Firebase
+      const app = initializeApp(firebaseConfig);
+      const db = getFirestore(app);
+      try {
+        getAnalytics(app);
+      } catch (e) {
+        console.warn('Firebase analytics no disponible:', e);
+      }
+
+      window.db = db; // Hacer disponible db globalmente
+    </script>
+
+    <!-- Firebase init as a module (provides window.firebaseDB helpers) -->
+    <script type="module" src="firebase-init.js"></script>
     <script type="module" src="script.js"></script>
 </body>
 </html>
