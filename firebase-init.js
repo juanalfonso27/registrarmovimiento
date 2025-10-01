@@ -36,18 +36,16 @@ const db = getFirestore(app)
 // Helpers simples para sincronizar colecciones locales (areas, products)
 window.firebaseDB = {
   async getAreas() {
-    try {
-      const snap = await getDocs(collection(db, 'areas'))
-      const areas = []
-      snap.forEach((d) => areas.push(d.data()))
-      return areas
-    } catch (e) {
-      console.error('Error leyendo areas desde Firestore', e)
-      return null
-    }
+    console.log('[firebase] getAreas starting')
+    const snap = await getDocs(collection(db, 'areas'))
+    const areas = []
+    snap.forEach((d) => areas.push(d.data()))
+    console.log(`[firebase] getAreas loaded ${areas.length} docs`)
+    return areas
   },
 
   async saveAreas(areas) {
+    console.log('[firebase] saveAreas starting, count=', areas.length)
     const batch = writeBatch(db)
     const colRef = collection(db, 'areas')
     // Simplificamos: borramos todo y reescribimos
@@ -60,22 +58,21 @@ window.firebaseDB = {
     })
 
     await batch.commit()
+    console.log('[firebase] saveAreas success')
     return true
   },
 
   async getProducts() {
-    try {
-      const snap = await getDocs(collection(db, 'products'))
-      const products = []
-      snap.forEach((d) => products.push(d.data()))
-      return products
-    } catch (e) {
-      console.error('Error leyendo products desde Firestore', e)
-      return null
-    }
+    console.log('[firebase] getProducts starting')
+    const snap = await getDocs(collection(db, 'products'))
+    const products = []
+    snap.forEach((d) => products.push(d.data()))
+    console.log(`[firebase] getProducts loaded ${products.length} docs`)
+    return products
   },
 
   async saveProducts(products) {
+    console.log('[firebase] saveProducts starting, count=', products.length)
     const batch = writeBatch(db)
     const colRef = collection(db, 'products')
     const existing = await getDocs(colRef)
@@ -87,6 +84,7 @@ window.firebaseDB = {
     })
 
     await batch.commit()
+    console.log('[firebase] saveProducts success')
     return true
   },
 }
