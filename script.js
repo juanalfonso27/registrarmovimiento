@@ -234,10 +234,20 @@ class AgroGPSApp {
     // Prompt for area name
     const name = prompt("Nombre del área:", `Campo ${this.areas.length + 1}`)
     if (!name) return
+    // Prompt for owner/propietario (obligatorio)
+    let owner = ''
+    while (true) {
+      owner = prompt('Propietario del área (obligatorio):', '')
+      if (owner === null) return // user cancelled
+      owner = owner.trim()
+      if (owner) break
+      alert('Por favor ingresa el nombre del propietario')
+    }
 
     const areaData = {
       id: Date.now().toString(),
       name: name,
+      owner: owner,
       area: area,
       coordinates: layer.toGeoJSON().geometry.coordinates,
       type: layer instanceof L.Polygon ? "polygon" : "rectangle",
@@ -252,7 +262,8 @@ class AgroGPSApp {
     layer.bindPopup(`
             <div class="text-center">
                 <h4 class="font-bold text-green-700">${name}</h4>
-                <p class="text-sm text-gray-600">${area.toFixed(2)} hectáreas</p>
+        <p class="text-sm text-gray-600">${area.toFixed(2)} hectáreas</p>
+        <p class="text-xs text-gray-500">Propietario: ${owner || '—'}</p>
                 <button onclick="app.selectAreaFromMap('${areaData.id}')" class="mt-2 bg-green-600 text-white px-3 py-1 rounded text-xs hover:bg-green-700">
                     Seleccionar
                 </button>
@@ -299,6 +310,7 @@ class AgroGPSApp {
                         <div class="text-center">
                             <h4 class="font-bold text-green-700">${area.name}</h4>
                             <p class="text-sm text-gray-600">${area.area.toFixed(2)} hectáreas</p>
+                            <p class="text-xs text-gray-500">Propietario: ${area.owner || '—'}</p>
                             <button onclick="app.selectAreaFromMap('${area.id}')" class="mt-2 bg-green-600 text-white px-3 py-1 rounded text-xs hover:bg-green-700">
                                 Seleccionar
                             </button>
@@ -361,7 +373,8 @@ class AgroGPSApp {
       layer.bindPopup(`
                 <div class="text-center">
                     <h4 class="font-bold text-green-700">${areaData.name}</h4>
-                    <p class="text-sm text-gray-600">${areaData.area.toFixed(2)} hectáreas</p>
+          <p class="text-sm text-gray-600">${areaData.area.toFixed(2)} hectáreas</p>
+          <p class="text-xs text-gray-500">Propietario: ${areaData.owner || '—'}</p>
                     <button onclick="app.selectAreaFromMap('${areaData.id}')" class="mt-2 bg-green-600 text-white px-3 py-1 rounded text-xs hover:bg-green-700">
                         Seleccionar
                     </button>
@@ -524,6 +537,10 @@ class AgroGPSApp {
         label.textContent = 'Área: — ha'
       }
     }
+    const ownerLabel = document.getElementById('selected-area-owner')
+    if (ownerLabel) {
+      ownerLabel.textContent = areaObj ? `Propietario: ${areaObj.owner || '—'}` : 'Propietario: —'
+    }
   }
 
   selectAreaFromMap(areaId) {
@@ -677,7 +694,7 @@ class AgroGPSApp {
                     <div class="flex justify-between items-start">
                         <div>
                             <h4 class="font-semibold text-gray-800">${area.name}</h4>
-                            <p class="text-sm text-gray-600">${area.area.toFixed(2)} hectáreas</p>
+                            <p class="text-sm text-gray-600">${area.area.toFixed(2)} hectáreas • <span class="text-xs text-gray-500">Propietario: ${area.owner || '—'}</span></p>
                             <p class="text-xs text-gray-500">${areaProducts.length} productos aplicados</p>
                         </div>
                         <div class="text-right">
@@ -721,7 +738,7 @@ class AgroGPSApp {
     this.areas.forEach((area) => {
       const option = document.createElement("option")
       option.value = area.id
-      option.textContent = `${area.name} (${area.area.toFixed(2)} ha)`
+      option.textContent = `${area.name} (${area.area.toFixed(2)} ha) ${area.owner ? '- ' + area.owner : ''}`
       select.appendChild(option)
     })
   }
@@ -741,37 +758,60 @@ class AgroGPSApp {
     const db = window.firebaseDB
     const mod = await import('https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js')
     const { doc, setDoc, collection, getDocs, deleteDoc } = mod
-
-    // Upsert all areas
-    const areaCol = collection(db, 'areas')
+    // Group areas and products by owner and write under owners/{owner}/areas and owners/{owner}/products
+    const owners = {}
     for (const a of this.areas) {
-      const ref = doc(areaCol, a.id)
-      // Firestore doesn't allow nested arrays (arrays that contain arrays).
-      // Coordinates are deeply nested arrays (GeoJSON style). Serialize them to a string before saving.
-      const payload = Object.assign({}, a, { coordinates: JSON.stringify(a.coordinates) })
-      await setDoc(ref, payload)
+      owners[a.owner] = owners[a.owner] || { areas: [], products: [] }
+      owners[a.owner].areas.push(a)
     }
-
-    // Remove remote areas that no longer exist locally
-    const remoteAreasSnap = await getDocs(areaCol)
-    for (const d of remoteAreasSnap.docs) {
-      if (!this.areas.find((a) => a.id === d.id)) {
-        await deleteDoc(doc(areaCol, d.id))
-      }
-    }
-
-    // Upsert all products
-    const prodCol = collection(db, 'products')
     for (const p of this.products) {
-      const ref = doc(prodCol, p.id)
-      await setDoc(ref, p)
+      owners[p.areaId ? (this.areas.find((a) => a.id === p.areaId) || {}).owner : ''] = owners[p.areaId ? (this.areas.find((a) => a.id === p.areaId) || {}).owner : ''] || { areas: [], products: [] }
+      const ownerForProd = (this.areas.find((a) => a.id === p.areaId) || {}).owner || ''
+      if (ownerForProd) owners[ownerForProd].products.push(p)
     }
 
-    // Remove remote products that no longer exist locally
-    const remoteProdSnap = await getDocs(prodCol)
-    for (const d of remoteProdSnap.docs) {
-      if (!this.products.find((p) => p.id === d.id)) {
-        await deleteDoc(doc(prodCol, d.id))
+    for (const ownerName of Object.keys(owners)) {
+      if (!ownerName) continue
+      const ownerAreas = owners[ownerName].areas
+      const ownerProducts = owners[ownerName].products
+
+      const basePath = `owners/${encodeURIComponent(ownerName)}`
+
+      // Areas
+      for (const a of ownerAreas) {
+        const ref = doc(db, `${basePath}/areas/${a.id}`)
+        const payload = Object.assign({}, a, { coordinates: JSON.stringify(a.coordinates) })
+        await setDoc(ref, payload)
+      }
+
+      // Cleanup remote areas for this owner
+      try {
+        const remoteAreasSnap = await getDocs(collection(db, `${basePath}/areas`))
+        for (const d of remoteAreasSnap.docs) {
+          if (!ownerAreas.find((a) => a.id === d.id)) {
+            await deleteDoc(doc(db, `${basePath}/areas/${d.id}`))
+          }
+        }
+      } catch (err) {
+        // ignore
+      }
+
+      // Products
+      for (const p of ownerProducts) {
+        const ref = doc(db, `${basePath}/products/${p.id}`)
+        await setDoc(ref, p)
+      }
+
+      // Cleanup remote products for this owner
+      try {
+        const remoteProdSnap = await getDocs(collection(db, `${basePath}/products`))
+        for (const d of remoteProdSnap.docs) {
+          if (!ownerProducts.find((p) => p.id === d.id)) {
+            await deleteDoc(doc(db, `${basePath}/products/${d.id}`))
+          }
+        }
+      } catch (err) {
+        // ignore
       }
     }
   }
@@ -782,30 +822,42 @@ class AgroGPSApp {
     const db = window.firebaseDB
     const mod = await import('https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js')
     const { collection, getDocs } = mod
+    // Read owners collection and merge all owners' areas/products into local arrays
+    const ownersCol = collection(db, 'owners')
+    const ownersSnap = await getDocs(ownersCol)
+    const allAreas = []
+    const allProducts = []
 
-    const areaCol = collection(db, 'areas')
-    const prodCol = collection(db, 'products')
-
-    const [areasSnap, prodsSnap] = await Promise.all([getDocs(areaCol), getDocs(prodCol)])
-
-    const remoteAreas = areasSnap.docs.map((d) => d.data())
-    const remoteProducts = prodsSnap.docs.map((d) => d.data())
-
-    // If remote has any data, treat it as source of truth and overwrite localStorage
-    if (remoteAreas.length > 0 || remoteProducts.length > 0) {
-      // Parse coordinates that were serialized when saved to Firestore
-      this.areas = remoteAreas.map((ra) => {
-        if (ra && typeof ra.coordinates === 'string') {
-          try {
-            ra.coordinates = JSON.parse(ra.coordinates)
-          } catch (err) {
-            console.warn('No se pudo parsear coordinates desde Firestore para area', ra.id, err && err.message)
+    for (const ownerDoc of ownersSnap.docs) {
+      const ownerId = ownerDoc.id
+      // areas
+      try {
+        const areasSnap = await getDocs(collection(db, `owners/${ownerId}/areas`))
+        for (const d of areasSnap.docs) {
+          const data = d.data()
+          if (data && typeof data.coordinates === 'string') {
+            try { data.coordinates = JSON.parse(data.coordinates) } catch (err) {}
           }
+          allAreas.push(data)
         }
-        return ra
-      })
-      this.products = remoteProducts
-      // Persist locally as well
+      } catch (err) {
+        // ignore per-owner errors
+      }
+
+      // products
+      try {
+        const prodsSnap = await getDocs(collection(db, `owners/${ownerId}/products`))
+        for (const d of prodsSnap.docs) {
+          allProducts.push(d.data())
+        }
+      } catch (err) {
+        // ignore
+      }
+    }
+
+    if (allAreas.length > 0 || allProducts.length > 0) {
+      this.areas = allAreas
+      this.products = allProducts
       localStorage.setItem('agro-areas', JSON.stringify(this.areas))
       localStorage.setItem('agro-products', JSON.stringify(this.products))
     }
