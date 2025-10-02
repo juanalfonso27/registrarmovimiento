@@ -782,6 +782,10 @@ class AgroGPSApp {
     const { doc, setDoc } = mod
     try {
       const ownerPath = encodeURIComponent(area.owner)
+      // Ensure owner doc exists (so collection('owners') will list it)
+      const ownerRef = doc(db, `owners/${ownerPath}`)
+      await setDoc(ownerRef, { owner: area.owner, updated: new Date().toISOString() }, { merge: true })
+
       const ref = doc(db, `owners/${ownerPath}/areas/${area.id}`)
       const payload = Object.assign({}, area, { coordinates: JSON.stringify(area.coordinates) })
       await setDoc(ref, payload)
@@ -813,6 +817,10 @@ class AgroGPSApp {
     const mod = await import('https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js')
     const { doc, setDoc } = mod
     try {
+      // Ensure owner doc exists
+      const ownerRef = doc(db, `owners/${ownerPath}`)
+      await setDoc(ownerRef, { owner: area.owner, updated: new Date().toISOString() }, { merge: true })
+
       const ref = doc(db, `owners/${ownerPath}/products/${product.id}`)
       await setDoc(ref, product)
     } catch (err) {
