@@ -964,17 +964,34 @@ class AgroGPSApp {
     const { jsPDF } = window.jspdf
     const doc = new jsPDF()
 
+    const ownerInput = prompt("Ingresa el nombre del propietario para el reporte (dejar en blanco para todos):")
+    const filterByOwner = ownerInput ? ownerInput.trim() : null
+
+    let filteredAreas = this.areas
+    let filteredProducts = this.products
+
+    if (filterByOwner) {
+      filteredAreas = this.areas.filter(area => area.owner.toLowerCase() === filterByOwner.toLowerCase())
+      const areaIds = filteredAreas.map(area => area.id)
+      filteredProducts = this.products.filter(product => areaIds.includes(product.areaId))
+
+      if (filteredAreas.length === 0) {
+        alert(`No se encontraron áreas para el propietario "${filterByOwner}".`) 
+        return
+      }
+    }
+
     doc.setFontSize(18)
-    doc.text('Reporte de Áreas Registradas', 14, 22)
+    doc.text(`Reporte de Áreas Registradas${filterByOwner ? ` para ${filterByOwner}` : ''}`, 14, 22)
 
     let y = 30
 
-    if (this.areas.length === 0) {
+    if (filteredAreas.length === 0) {
       doc.setFontSize(12)
       doc.text('No hay áreas registradas.', 14, y)
     } else {
       // Sort areas by owner and then by name
-      const sortedAreas = [...this.areas].sort((a, b) => {
+      const sortedAreas = [...filteredAreas].sort((a, b) => {
         if (a.owner < b.owner) return -1
         if (a.owner > b.owner) return 1
         if (a.name < b.name) return -1
@@ -997,7 +1014,7 @@ class AgroGPSApp {
         doc.text(`Área: ${area.name} (${area.area.toFixed(2)} ha)`, 20, y)
         y += 7
 
-        const areaProducts = this.products.filter((p) => p.areaId === area.id)
+        const areaProducts = filteredProducts.filter((p) => p.areaId === area.id)
 
         if (areaProducts.length > 0) {
           doc.setFontSize(10)
@@ -1050,13 +1067,13 @@ class AgroGPSApp {
           doc.addPage()
           y = 22 // Reset Y for new page
           doc.setFontSize(14)
-          doc.text(`Reporte de Áreas Registradas (continuación)`, 14, 22)
+          doc.text(`Reporte de Áreas Registradas (continuación)${filterByOwner ? ` para ${filterByOwner}` : ''}`, 14, 22)
           y = 30
         }
       }
     }
 
-    doc.save('reporte_areas_agrogps.pdf')
+    doc.save(`reporte_areas_agrogps${filterByOwner ? `_${filterByOwner}` : ''}.pdf`)
   }
 }
 
