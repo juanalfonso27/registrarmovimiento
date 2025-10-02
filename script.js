@@ -274,6 +274,8 @@ class AgroGPSApp {
 
     // Save and update UI
     this.saveData()
+  // Save just this area to Firestore
+  this.saveAreaToFirestore(areaData).catch((e) => console.warn(e))
     this.updateStats()
     this.updateAreasList()
     this.updateAreaSelect()
@@ -286,8 +288,16 @@ class AgroGPSApp {
   onAreaDeleted(e) {
     e.layers.eachLayer((layer) => {
       if (layer.areaId) {
+        const removed = this.areas.find((area) => area.id === layer.areaId)
         this.areas = this.areas.filter((area) => area.id !== layer.areaId)
+        // Delete related products and remote entries
+        const relatedProducts = this.products.filter((product) => product.areaId === layer.areaId)
         this.products = this.products.filter((product) => product.areaId !== layer.areaId)
+        if (removed && removed.owner) this.deleteAreaFromFirestore(removed.id, removed.owner).catch((e) => console.warn(e))
+        for (const rp of relatedProducts) {
+          // delete each product remote
+          this.deleteProductFromFirestore(rp.id, removed ? removed.owner : '').catch((e) => console.warn(e))
+        }
       }
     })
 
@@ -327,6 +337,17 @@ class AgroGPSApp {
     const currentSelection = document.getElementById('area-select').value
     this.updateAreaSelect()
     if (currentSelection) document.getElementById('area-select').value = currentSelection
+    // Save updated areas (only those edited) to Firestore: find edited layers from event
+    try {
+      e.layers.eachLayer((layer) => {
+        if (layer.areaId) {
+          const a = this.areas.find((ar) => ar.id === layer.areaId)
+          if (a) this.saveAreaToFirestore(a).catch((err) => console.warn(err))
+        }
+      })
+    } catch (err) {
+      // ignore
+    }
   }
 
   calculateArea(layer) {
@@ -481,6 +502,11 @@ class AgroGPSApp {
     // Append and save
     this.products.push(...newProducts)
     this.saveData()
+
+    // Save each new product to Firestore individually
+    for (const np of newProducts) {
+      this.saveProductToFirestore(np).catch((e) => console.warn(e))
+    }
 
     // Reset form lines to single empty line
     const container = document.getElementById('products-container')
@@ -746,10 +772,65 @@ class AgroGPSApp {
   saveData() {
     localStorage.setItem("agro-areas", JSON.stringify(this.areas))
     localStorage.setItem("agro-products", JSON.stringify(this.products))
-    // Also attempt to save to Firestore (non-blocking)
-    this.saveToFirestore().catch((err) => {
-      console.warn('Error guardando en Firestore:', err && err.message)
-    })
+  }
+
+  // Per-document Firestore operations (efficient — write only what changed)
+  async saveAreaToFirestore(area) {
+    if (!window.firebaseDB) return
+    const db = window.firebaseDB
+    const mod = await import('https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js')
+    const { doc, setDoc } = mod
+    try {
+      const ownerPath = encodeURIComponent(area.owner)
+      const ref = doc(db, `owners/${ownerPath}/areas/${area.id}`)
+      const payload = Object.assign({}, area, { coordinates: JSON.stringify(area.coordinates) })
+      await setDoc(ref, payload)
+    } catch (err) {
+      console.warn('saveAreaToFirestore error:', err && err.message)
+    }
+  }
+
+  async deleteAreaFromFirestore(areaId, owner) {
+    if (!window.firebaseDB || !owner) return
+    const db = window.firebaseDB
+    const mod = await import('https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js')
+    const { doc, deleteDoc } = mod
+    try {
+      const ownerPath = encodeURIComponent(owner)
+      await deleteDoc(doc(db, `owners/${ownerPath}/areas/${areaId}`))
+    } catch (err) {
+      console.warn('deleteAreaFromFirestore error:', err && err.message)
+    }
+  }
+
+  async saveProductToFirestore(product) {
+    if (!window.firebaseDB) return
+    // Determine owner from product.areaId
+    const area = this.areas.find((a) => a.id === product.areaId)
+    if (!area || !area.owner) return
+    const ownerPath = encodeURIComponent(area.owner)
+    const db = window.firebaseDB
+    const mod = await import('https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js')
+    const { doc, setDoc } = mod
+    try {
+      const ref = doc(db, `owners/${ownerPath}/products/${product.id}`)
+      await setDoc(ref, product)
+    } catch (err) {
+      console.warn('saveProductToFirestore error:', err && err.message)
+    }
+  }
+
+  async deleteProductFromFirestore(productId, owner) {
+    if (!window.firebaseDB || !owner) return
+    const db = window.firebaseDB
+    const mod = await import('https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js')
+    const { doc, deleteDoc } = mod
+    try {
+      const ownerPath = encodeURIComponent(owner)
+      await deleteDoc(doc(db, `owners/${ownerPath}/products/${productId}`))
+    } catch (err) {
+      console.warn('deleteProductFromFirestore error:', err && err.message)
+    }
   }
 
   // Save current areas/products to Firestore. Uses dynamic imports so script.js stays non-module.
