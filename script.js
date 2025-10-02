@@ -141,14 +141,6 @@ class AgroGPSApp {
       })
     }
 
-    // Export/Import GeoJSON buttons
-    const exportBtn = document.getElementById('export-geojson-btn')
-    const importBtn = document.getElementById('import-geojson-btn')
-    const importInput = document.getElementById('import-geojson-input')
-    if (exportBtn) exportBtn.addEventListener('click', () => this.exportGeoJSON())
-    if (importBtn && importInput) importBtn.addEventListener('click', () => importInput.click())
-    if (importInput) importInput.addEventListener('change', (e) => this.importGeoJSONFile(e.target.files && e.target.files[0]))
-
     // Delegate remove button clicks from container
     document.getElementById("products-container").addEventListener("click", (e) => {
       if (e.target && e.target.classList.contains("remove-product-line")) {
@@ -732,112 +724,6 @@ class AgroGPSApp {
       option.textContent = `${area.name} (${area.area.toFixed(2)} ha)`
       select.appendChild(option)
     })
-  }
-
-  // Export current areas as a GeoJSON FeatureCollection and trigger download
-  exportGeoJSON() {
-    const features = this.areas.map((a) => ({
-      type: 'Feature',
-      properties: {
-        id: a.id,
-        name: a.name,
-        area_ha: a.area,
-        created: a.created,
-      },
-      geometry: {
-        type: a.type === 'polygon' ? 'Polygon' : 'Polygon',
-        coordinates: a.coordinates,
-      },
-    }))
-
-    const geojson = { type: 'FeatureCollection', features }
-    const blob = new Blob([JSON.stringify(geojson, null, 2)], { type: 'application/geo+json' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = 'areas.geojson'
-    document.body.appendChild(a)
-    a.click()
-    a.remove()
-    URL.revokeObjectURL(url)
-  }
-
-  // Import a GeoJSON file (File object) and add areas to the app
-  async importGeoJSONFile(file) {
-    if (!file) return
-    let text
-    try {
-      text = await file.text()
-    } catch (err) {
-      alert('No se pudo leer el archivo')
-      return
-    }
-
-    let gj
-    try {
-      gj = JSON.parse(text)
-    } catch (err) {
-      alert('GeoJSON inválido')
-      return
-    }
-
-    if (!gj || gj.type !== 'FeatureCollection' || !Array.isArray(gj.features)) {
-      alert('GeoJSON debe ser un FeatureCollection')
-      return
-    }
-
-    // Convert features to app areas
-    const imported = []
-    for (const f of gj.features) {
-      if (!f.geometry || !f.geometry.coordinates) continue
-      const id = (f.properties && f.properties.id) || Date.now().toString() + Math.random().toString(36).slice(2, 7)
-      const name = (f.properties && f.properties.name) || `Importada ${new Date().toLocaleString()}`
-      const coords = f.geometry.coordinates
-      const type = f.geometry.type === 'Polygon' ? 'polygon' : 'polygon'
-      // Calculate area from coords by creating a temporary layer
-      let layer
-      try {
-        layer = L.polygon(coords[0].map((c) => [c[1], c[0]]))
-      } catch (err) {
-        // skip invalid geometry
-        continue
-      }
-
-      const areaHa = this.calculateArea(layer)
-
-      const areaData = {
-        id,
-        name,
-        area: areaHa,
-        coordinates: coords,
-        type,
-        created: new Date().toISOString(),
-      }
-
-      this.areas.push(areaData)
-      imported.push(areaData)
-      this.drawnItems.addLayer(layer)
-      layer.areaId = areaData.id
-      layer.bindPopup(`
-                <div class="text-center">
-                    <h4 class="font-bold text-green-700">${areaData.name}</h4>
-                    <p class="text-sm text-gray-600">${areaData.area.toFixed(2)} hectáreas</p>
-                    <button onclick="app.selectAreaFromMap('${areaData.id}')" class="mt-2 bg-green-600 text-white px-3 py-1 rounded text-xs hover:bg-green-700">Seleccionar</button>
-                </div>
-            `)
-    }
-
-    if (imported.length === 0) {
-      alert('No se importaron áreas válidas')
-      return
-    }
-
-    // Persist and sync
-    this.saveData()
-    this.updateStats()
-    this.updateAreasList()
-    this.updateAreaSelect()
-    alert(`Se importaron ${imported.length} área(s) correctamente`)
   }
 
   saveData() {
