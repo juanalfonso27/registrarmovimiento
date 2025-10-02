@@ -132,6 +132,12 @@ class AgroGPSApp {
       areasFsBtn.addEventListener('click', () => this.toggleAreasFullscreen())
     }
 
+    // Export to PDF button
+    const exportPdfBtn = document.getElementById('export-pdf-btn')
+    if (exportPdfBtn) {
+      exportPdfBtn.addEventListener('click', () => this.exportAreasToPdf())
+    }
+
     // Areas search/filter
     const areasSearch = document.getElementById('areas-search')
     if (areasSearch) {
@@ -951,6 +957,106 @@ class AgroGPSApp {
       localStorage.setItem('agro-areas', JSON.stringify(this.areas))
       localStorage.setItem('agro-products', JSON.stringify(this.products))
     }
+  }
+
+  // Export areas and their products to a PDF document
+  async exportAreasToPdf() {
+    const { jsPDF } = window.jspdf
+    const doc = new jsPDF()
+
+    doc.setFontSize(18)
+    doc.text('Reporte de Áreas Registradas', 14, 22)
+
+    let y = 30
+
+    if (this.areas.length === 0) {
+      doc.setFontSize(12)
+      doc.text('No hay áreas registradas.', 14, y)
+    } else {
+      // Sort areas by owner and then by name
+      const sortedAreas = [...this.areas].sort((a, b) => {
+        if (a.owner < b.owner) return -1
+        if (a.owner > b.owner) return 1
+        if (a.name < b.name) return -1
+        if (a.name > b.name) return 1
+        return 0
+      })
+
+      let currentOwner = ''
+
+      for (const area of sortedAreas) {
+        if (area.owner !== currentOwner) {
+          currentOwner = area.owner
+          y += 10
+          doc.setFontSize(14)
+          doc.text(`Propietario: ${currentOwner}`, 14, y)
+          y += 7
+        }
+
+        doc.setFontSize(12)
+        doc.text(`Área: ${area.name} (${area.area.toFixed(2)} ha)`, 20, y)
+        y += 7
+
+        const areaProducts = this.products.filter((p) => p.areaId === area.id)
+
+        if (areaProducts.length > 0) {
+          doc.setFontSize(10)
+          y += 3
+          doc.text('Productos Aplicados:', 25, y)
+          y += 5
+
+          const headers = ['Tipo', 'Nombre', 'Cantidad', 'Unidad', 'Fecha', 'Notas']
+          const data = areaProducts.map((p) => [
+            p.type,
+            p.name,
+            p.quantity,
+            p.unit,
+            new Date(p.date).toLocaleDateString(),
+            p.notes || '-',
+          ])
+
+          doc.autoTable({ // This requires jspdf-autotable plugin, which is often bundled or added separately
+            startY: y,
+            head: [headers],
+            body: data,
+            margin: { left: 25, right: 14 },
+            styles: { fontSize: 8, cellPadding: 1, overflow: 'linebreak' },
+            headStyles: { fillColor: [4, 120, 87], textColor: [255, 255, 255] },
+            columnStyles: { 
+              0: { cellWidth: 20 }, // Tipo
+              1: { cellWidth: 40 }, // Nombre
+              2: { cellWidth: 20 }, // Cantidad
+              3: { cellWidth: 15 }, // Unidad
+              4: { cellWidth: 20 }, // Fecha
+              5: { cellWidth: 'auto' }, // Notas
+            },
+            didDrawPage: function(data) {
+              // Footer
+              let str = 'Página ' + doc.internal.getNumberOfPages()
+              doc.setFontSize(10)
+              doc.text(str, doc.internal.pageSize.width - 14, doc.internal.pageSize.height - 10)
+            }
+          })
+          y = doc.autoTable.previous.finalY + 5
+        } else {
+          doc.setFontSize(10)
+          doc.text('No hay productos registrados para esta área.', 25, y + 3)
+          y += 10
+        }
+        y += 5 // Spacing between areas
+
+        // Check if new page is needed
+        if (y > doc.internal.pageSize.height - 30 && area !== sortedAreas[sortedAreas.length -1]) {
+          doc.addPage()
+          y = 22 // Reset Y for new page
+          doc.setFontSize(14)
+          doc.text(`Reporte de Áreas Registradas (continuación)`, 14, 22)
+          y = 30
+        }
+      }
+    }
+
+    doc.save('reporte_areas_agrogps.pdf')
   }
 }
 
