@@ -782,11 +782,11 @@ class AgroGPSApp {
     const { doc, setDoc } = mod
     try {
       const ownerPath = encodeURIComponent(area.owner)
-      // Ensure owner doc exists (so collection('owners') will list it)
-      const ownerRef = doc(db, `owners/${ownerPath}`)
+  // Ensure owner doc exists (so collection('propietario') will list it)
+  const ownerRef = doc(db, `propietario/${ownerPath}`)
       await setDoc(ownerRef, { owner: area.owner, updated: new Date().toISOString() }, { merge: true })
 
-      const ref = doc(db, `owners/${ownerPath}/areas/${area.id}`)
+  const ref = doc(db, `propietario/${ownerPath}/areas/${area.id}`)
       const payload = Object.assign({}, area, { coordinates: JSON.stringify(area.coordinates) })
       await setDoc(ref, payload)
     } catch (err) {
@@ -801,7 +801,7 @@ class AgroGPSApp {
     const { doc, deleteDoc } = mod
     try {
       const ownerPath = encodeURIComponent(owner)
-      await deleteDoc(doc(db, `owners/${ownerPath}/areas/${areaId}`))
+  await deleteDoc(doc(db, `propietario/${ownerPath}/areas/${areaId}`))
     } catch (err) {
       console.warn('deleteAreaFromFirestore error:', err && err.message)
     }
@@ -818,10 +818,10 @@ class AgroGPSApp {
     const { doc, setDoc } = mod
     try {
       // Ensure owner doc exists
-      const ownerRef = doc(db, `owners/${ownerPath}`)
+  const ownerRef = doc(db, `propietario/${ownerPath}`)
       await setDoc(ownerRef, { owner: area.owner, updated: new Date().toISOString() }, { merge: true })
 
-      const ref = doc(db, `owners/${ownerPath}/products/${product.id}`)
+  const ref = doc(db, `propietario/${ownerPath}/products/${product.id}`)
       await setDoc(ref, product)
     } catch (err) {
       console.warn('saveProductToFirestore error:', err && err.message)
@@ -835,7 +835,7 @@ class AgroGPSApp {
     const { doc, deleteDoc } = mod
     try {
       const ownerPath = encodeURIComponent(owner)
-      await deleteDoc(doc(db, `owners/${ownerPath}/products/${productId}`))
+  await deleteDoc(doc(db, `propietario/${ownerPath}/products/${productId}`))
     } catch (err) {
       console.warn('deleteProductFromFirestore error:', err && err.message)
     }
@@ -847,7 +847,7 @@ class AgroGPSApp {
     const db = window.firebaseDB
     const mod = await import('https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js')
     const { doc, setDoc, collection, getDocs, deleteDoc } = mod
-    // Group areas and products by owner and write under owners/{owner}/areas and owners/{owner}/products
+  // Group areas and products by owner and write under propietario/{owner}/areas and propietario/{owner}/products
     const owners = {}
     for (const a of this.areas) {
       owners[a.owner] = owners[a.owner] || { areas: [], products: [] }
@@ -864,7 +864,7 @@ class AgroGPSApp {
       const ownerAreas = owners[ownerName].areas
       const ownerProducts = owners[ownerName].products
 
-      const basePath = `owners/${encodeURIComponent(ownerName)}`
+  const basePath = `propietario/${encodeURIComponent(ownerName)}`
 
       // Areas
       for (const a of ownerAreas) {
@@ -921,7 +921,7 @@ class AgroGPSApp {
       const ownerId = ownerDoc.id
       // areas
       try {
-        const areasSnap = await getDocs(collection(db, `owners/${ownerId}/areas`))
+  const areasSnap = await getDocs(collection(db, `propietario/${ownerId}/areas`))
         for (const d of areasSnap.docs) {
           const data = d.data()
           if (data && typeof data.coordinates === 'string') {
@@ -935,7 +935,7 @@ class AgroGPSApp {
 
       // products
       try {
-        const prodsSnap = await getDocs(collection(db, `owners/${ownerId}/products`))
+  const prodsSnap = await getDocs(collection(db, `propietario/${ownerId}/products`))
         for (const d of prodsSnap.docs) {
           allProducts.push(d.data())
         }
