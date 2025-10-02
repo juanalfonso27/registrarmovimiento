@@ -912,12 +912,13 @@ class AgroGPSApp {
     const mod = await import('https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js')
     const { collection, getDocs } = mod
     // Read owners collection and merge all owners' areas/products into local arrays
-    const ownersCol = collection(db, 'owners')
-    const ownersSnap = await getDocs(ownersCol)
     const allAreas = []
     const allProducts = []
 
-    for (const ownerDoc of ownersSnap.docs) {
+    const propietariosCol = collection(db, 'propietario')
+    const propietariosSnap = await getDocs(propietariosCol)
+
+    for (const ownerDoc of propietariosSnap.docs) {
       const ownerId = ownerDoc.id
       // areas
       try {
