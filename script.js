@@ -440,6 +440,10 @@ class AgroGPSApp {
       <input type="text" class="product-name w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent" placeholder="Ej: Urea 46%">
     </div>
     <div>
+      <label class="block text-sm font-medium text-gray-700 mb-1">Tipo de Trabajo</label>
+      <input type="text" class="product-work-type w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent" placeholder="Ej: Siembra, Fumigación, Cosecha">
+    </div>
+    <div>
       <label class="block text-sm font-medium text-gray-700 mb-1">Dosis / Cantidad</label>
       <input type="number" class="product-quantity w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent" step="0.01" placeholder="0.00">
     </div>
@@ -486,6 +490,7 @@ class AgroGPSApp {
       const quantityRaw = line.querySelector('.product-quantity')?.value
       const quantity = quantityRaw === '' ? NaN : Number.parseFloat(quantityRaw)
       const unit = line.querySelector('.product-unit')?.value || ''
+      const workType = line.querySelector('.product-work-type')?.value.trim() || ''
 
       if (!name || !quantity || Number.isNaN(quantity)) {
         alert('Por favor completa nombre y dosis/cantidad válidos en cada línea de producto')
@@ -499,6 +504,7 @@ class AgroGPSApp {
         name,
         quantity,
         unit,
+        workType,
         date,
         notes,
         created: new Date().toISOString(),
@@ -745,6 +751,7 @@ class AgroGPSApp {
                                         <div>
                                             <div class="text-sm font-medium text-gray-800">${product.name} <span class="text-xs text-gray-500">(${product.type})</span></div>
                                             <div class="text-xs text-gray-600">${product.quantity} ${product.unit} • ${new Date(product.date).toLocaleDateString()}</div>
+                                            ${product.workType ? `<div class="mt-1 text-xs text-gray-600">Tipo de Trabajo: ${product.workType}</div>` : ''}
                                         </div>
                                         <div class="text-xs text-gray-500 text-right">${product.created ? new Date(product.created).toLocaleString() : ''}</div>
                                     </div>
@@ -1022,7 +1029,7 @@ class AgroGPSApp {
           doc.text('Productos Aplicados:', 25, y)
           y += 5
 
-          const headers = ['Tipo', 'Nombre', 'Cantidad', 'Unidad', 'Fecha', 'Notas']
+          const headers = ['Tipo', 'Nombre', 'Cantidad', 'Unidad', 'Fecha', 'Notas', 'Tipo de Trabajo']
           const data = areaProducts.map((p) => [
             p.type,
             p.name,
@@ -1030,6 +1037,7 @@ class AgroGPSApp {
             p.unit,
             new Date(p.date).toLocaleDateString(),
             p.notes || '-',
+            p.workType || '-',
           ])
 
           doc.autoTable({ // This requires jspdf-autotable plugin, which is often bundled or added separately
@@ -1046,6 +1054,7 @@ class AgroGPSApp {
               3: { cellWidth: 15 }, // Unidad
               4: { cellWidth: 20 }, // Fecha
               5: { cellWidth: 'auto' }, // Notas
+              6: { cellWidth: 30 }, // Tipo de Trabajo
             },
             didDrawPage: function(data) {
               // Footer
