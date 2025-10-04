@@ -61,9 +61,7 @@ class AgroGPSApp {
       },
       edit: {
         featureGroup: this.drawnItems,
-        remove: {
-          removeAll: false // Disable the "Clear All" button
-        },
+        remove: false, // Deshabilita la opción de eliminar todos los elementos
       },
     })
 
@@ -592,6 +590,23 @@ class AgroGPSApp {
     this.selectArea(areaId)
   }
 
+  deleteAreaById(areaId) {
+    if (!confirm('¿Está seguro de que desea eliminar esta área y todos sus productos? Esta acción es irreversible.')) {
+      return
+    }
+
+    const layerToDelete = this.drawnItems.getLayers().find(layer => layer.areaId === areaId)
+
+    if (layerToDelete) {
+      // Simulate a delete event for this single layer
+      const event = { layers: new L.FeatureGroup([layerToDelete]) }
+      this.onAreaDeleted(event)
+      this.drawnItems.removeLayer(layerToDelete) // Also remove from map visually
+    } else {
+      console.warn(`Layer with areaId ${areaId} not found on map.`)
+    }
+  }
+
   getUserLocation() {
     const button = document.getElementById('locate-btn')
 
@@ -741,7 +756,8 @@ class AgroGPSApp {
                             <p class="text-sm text-gray-600">${area.area.toFixed(2)} hectáreas • <span class="text-xs text-gray-500">Propietario: ${area.owner || '—'}</span></p>
                             <p class="text-xs text-gray-500">${areaProducts.length} productos aplicados</p>
                         </div>
-                        <div class="text-right">
+                        <div class="text-right flex items-center space-x-2">
+                            <button onclick="event.stopPropagation(); app.deleteAreaById('${area.id}')" class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-xs" title="Eliminar Área">Eliminar</button>
                             <span class="inline-block w-3 h-3 bg-green-500 rounded-full"></span>
                         </div>
                     </div>
