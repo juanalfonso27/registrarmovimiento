@@ -292,6 +292,10 @@ class AgroGPSApp {
   }
 
   onAreaDeleted(e) {
+    if (!confirm('¿Está seguro de que desea eliminar los datos de esta área? Esta acción es irreversible.')) {
+      // If user cancels, stop the deletion process
+      return;
+    }
     e.layers.eachLayer((layer) => {
       if (layer.areaId) {
         const removed = this.areas.find((area) => area.id === layer.areaId)
