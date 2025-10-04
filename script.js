@@ -61,7 +61,9 @@ class AgroGPSApp {
       },
       edit: {
         featureGroup: this.drawnItems,
-        remove: true,
+        remove: {
+          removeAll: false // Disable the "Clear All" button
+        },
       },
     })
 
