@@ -769,7 +769,7 @@ class AgroGPSApp {
                             ${areaProducts
                               .map(
                                 (product) => `
-                                <div class="bg-gray-50 p-3 rounded">
+                                <div class="bg-gray-50 p-3 rounded product-display" id="product-display-${product.id}">
                                     <div class="flex items-start justify-between">
                                         <div>
                                             <div class="text-sm font-medium text-gray-800">${product.name} <span class="text-xs text-gray-500">(${product.type})</span></div>
@@ -777,11 +777,14 @@ class AgroGPSApp {
                                             ${product.workType ? `<div class="mt-1 text-xs text-gray-600">Tipo de Trabajo: ${product.workType}</div>` : ''}
                                         </div>
                                         <div class="text-xs text-gray-500 text-right flex space-x-2 items-center">
-                                            <button onclick="event.stopPropagation(); app.editProductDetails('${product.id}')" class="bg-amber-500 hover:bg-amber-600 text-white px-2 py-1 rounded-md" title="Editar Producto">Editar</button>
+                                            <button onclick="event.stopPropagation(); app.toggleProductEditForm('${product.id}', true)" class="bg-amber-500 hover:bg-amber-600 text-white px-2 py-1 rounded-md" title="Editar Producto">Editar</button>
                                             <span>${product.created ? new Date(product.created).toLocaleString() : ''}</span>
                                         </div>
                                     </div>
                                     ${product.notes ? `<div class="mt-2 text-xs text-gray-700">Notas: ${product.notes}</div>` : ''}
+                                </div>
+                                <div class="hidden product-edit-form" id="product-edit-form-${product.id}">
+                                  ${this._renderProductEditForm(product)}
                                 </div>
                             `,
                               )
@@ -1160,52 +1163,96 @@ class AgroGPSApp {
     this.selectArea(areaToEdit.id)
   }
 
-  async editProductDetails(productId) {
+  // Method to render product edit form (new private helper)
+  _renderProductEditForm(product) {
+        const productTypes = ["Fungicida", "Herbicida", "Insecticida", "Foliare", "Fertilizante"]
+        const productUnits = ["litros", "kilos", "g", "ml"]
+
+        return `
+            <div class="bg-blue-50 p-3 rounded space-y-2">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Tipo de Producto</label>
+                    <select id="edit-product-type-${product.id}" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        ${productTypes.map(type => `<option value="${type}" ${product.type === type ? 'selected' : ''}>${type}</option>`).join('')}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Nombre del Producto</label>
+                    <input type="text" id="edit-product-name-${product.id}" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" value="${product.name}" placeholder="Ej: Urea 46%">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Dosis / Cantidad</label>
+                    <input type="number" id="edit-product-quantity-${product.id}" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" step="0.01" value="${product.quantity}" placeholder="0.00">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Unidad</label>
+                    <select id="edit-product-unit-${product.id}" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        ${productUnits.map(unit => `<option value="${unit}" ${product.unit === unit ? 'selected' : ''}>${unit}</option>`).join('')}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Tipo de Trabajo</label>
+                    <input type="text" id="edit-product-work-type-${product.id}" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" value="${product.workType || ''}" placeholder="Ej: Siembra, Fumigación, Cosecha">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Notas</label>
+                    <textarea id="edit-product-notes-${product.id}" rows="2" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Observaciones adicionales...">${product.notes || ''}</textarea>
+                </div>
+                <div class="flex justify-end space-x-2">
+                    <button type="button" onclick="event.stopPropagation(); app.saveProductDetails('${product.id}')" class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded-lg">Guardar</button>
+                    <button type="button" onclick="event.stopPropagation(); app.toggleProductEditForm('${product.id}', false)" class="bg-gray-400 hover:bg-gray-500 text-white px-3 py-1 rounded-lg">Cancelar</button>
+                </div>
+            </div>
+        `
+    }
+
+  // Toggle visibility of product display and edit form
+  toggleProductEditForm(productId, showForm) {
+    const productDisplay = document.getElementById(`product-display-${productId}`)
+    const productEditForm = document.getElementById(`product-edit-form-${productId}`)
+    if (productDisplay && productEditForm) {
+      productDisplay.classList.toggle('hidden', showForm)
+      productEditForm.classList.toggle('hidden', !showForm)
+    }
+  }
+
+  async saveProductDetails(productId) {
     const productToEdit = this.products.find(product => product.id === productId)
     if (!productToEdit) {
-      console.warn(`Product with ID ${productId} not found.`)
+      console.warn(`Product with ID ${productId} not found for saving.`)
       return
     }
 
-    const productTypes = ["Fungicida", "Herbicida", "Insecticida", "Foliare", "Fertilizante"]
-    const productUnits = ["litros", "kilos", "g", "ml"]
-
-    const newType = prompt("Editar tipo de producto:", productToEdit.type)
-    if (newType === null || !productTypes.includes(newType)) return // User cancelled or invalid type
-
-    const newName = prompt("Editar nombre del producto:", productToEdit.name)
-    if (newName === null || !newName.trim()) return // User cancelled or empty name
-
-    const newQuantityRaw = prompt("Editar dosis / cantidad:", productToEdit.quantity)
-    if (newQuantityRaw === null) return // User cancelled
+    // Get values from the form
+    const newType = document.getElementById(`edit-product-type-${productId}`).value
+    const newName = document.getElementById(`edit-product-name-${productId}`).value.trim()
+    const newQuantityRaw = document.getElementById(`edit-product-quantity-${productId}`).value
     const newQuantity = Number.parseFloat(newQuantityRaw)
-    if (Number.isNaN(newQuantity) || newQuantity <= 0) {
-      alert('Por favor ingresa una cantidad válida.')
+    const newUnit = document.getElementById(`edit-product-unit-${productId}`).value
+    const newWorkType = document.getElementById(`edit-product-work-type-${productId}`).value.trim()
+    const newNotes = document.getElementById(`edit-product-notes-${productId}`).value.trim()
+
+    // Basic validation
+    if (!newName || Number.isNaN(newQuantity) || newQuantity <= 0) {
+      alert('Por favor completa nombre y dosis/cantidad válidos en cada línea de producto')
       return
     }
-
-    const newUnit = prompt("Editar unidad:", productToEdit.unit)
-    if (newUnit === null || !productUnits.includes(newUnit)) return // User cancelled or invalid unit
-
-    const newWorkType = prompt("Editar tipo de trabajo:", productToEdit.workType || '')
-    if (newWorkType === null) return // User cancelled
-
-    const newNotes = prompt("Editar notas:", productToEdit.notes || '')
-    if (newNotes === null) return // User cancelled
 
     // Update the product object
     productToEdit.type = newType
-    productToEdit.name = newName.trim()
+    productToEdit.name = newName
     productToEdit.quantity = newQuantity
     productToEdit.unit = newUnit
-    productToEdit.workType = newWorkType.trim()
-    productToEdit.notes = newNotes.trim()
-    productToEdit.updated = new Date().toISOString() // Add an updated timestamp
+    productToEdit.workType = newWorkType
+    productToEdit.notes = newNotes
+    productToEdit.updated = new Date().toISOString()
 
     // Save data and update UI
     this.saveData()
-    await this.saveProductToFirestore(productToEdit).catch((e) => console.warn(e + ' (from editProductDetails)'))
+    await this.saveProductToFirestore(productToEdit).catch((e) => console.warn(e + ' (from saveProductDetails)'))
     this.updateAreasList()
+    // After saving, hide the form and show the display again
+    this.toggleProductEditForm(productId, false)
   }
 }
 
