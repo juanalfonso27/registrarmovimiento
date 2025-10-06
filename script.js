@@ -30,6 +30,7 @@ class AgroGPSApp {
     this.updateStats()
     this.updateAreasList()
     this.updateAreaSelect()
+    this.toggleDeleteButton() // Initial call to set button state
 
     // Initialize draw control
     const drawControl = new L.Control.Draw({
@@ -61,7 +62,7 @@ class AgroGPSApp {
       },
       edit: {
         featureGroup: this.drawnItems,
-        remove: false, // Deshabilita la opción de eliminar todos los elementos
+        remove: true, // Habilita la opción de eliminar elementos
       },
     })
 
@@ -71,6 +72,37 @@ class AgroGPSApp {
     this.map.on(L.Draw.Event.CREATED, (e) => this.onAreaCreated(e))
     this.map.on(L.Draw.Event.DELETED, (e) => this.onAreaDeleted(e))
     this.map.on(L.Draw.Event.EDITED, (e) => this.onAreaEdited(e))
+
+    // Event listener for custom delete button
+    document.getElementById("delete-area-btn").addEventListener("click", () => {
+      if (this.selectedArea) {
+        const selectedLayer = this.drawnItems.getLayers().find(layer => layer.feature.properties.id === this.selectedArea.id)
+        if (selectedLayer) {
+          this.drawnItems.removeLayer(selectedLayer)
+          // Manually trigger the onAreaDeleted since removing layer directly doesn't fire L.Draw.Event.DELETED
+          this.onAreaDeleted({ layers: new L.LayerGroup([selectedLayer]) })
+        } else {
+          console.warn("Selected area layer not found on map.")
+        }
+      } else {
+        alert("Por favor, selecciona un área para eliminar.")
+      }
+    })
+  }
+
+  onAreaDeleted(e) {
+    e.layers.each((layer) => {
+      const deletedAreaId = layer.feature.properties.id
+      this.areas = this.areas.filter((area) => area.id !== deletedAreaId)
+      this.saveAreas()
+      this.updateAreasList()
+      this.updateAreaSelect()
+      this.updateStats()
+      if (this.selectedArea && this.selectedArea.id === deletedAreaId) {
+        this.selectedArea = null
+      }
+    })
+    this.toggleDeleteButton() // Update button state after deletion
   }
 
   initMap() {
@@ -285,7 +317,7 @@ class AgroGPSApp {
     this.updateStats()
     this.updateAreasList()
     this.updateAreaSelect()
-
+    this.toggleDeleteButton() // Ensure this is present
     // Auto-select the newly created area
     document.getElementById('area-select').value = areaData.id
     this.selectArea(areaData.id)
@@ -315,6 +347,7 @@ class AgroGPSApp {
     this.updateStats()
     this.updateAreasList()
     this.updateAreaSelect()
+    this.toggleDeleteButton() // Ensure this is present
   }
 
   onAreaEdited(e) {
@@ -583,6 +616,8 @@ class AgroGPSApp {
     if (ownerLabel) {
       ownerLabel.textContent = areaObj ? `Propietario: ${areaObj.owner || '—'}` : 'Propietario: —'
     }
+    this.updateAreaSelect()
+    this.toggleDeleteButton()
   }
 
   selectAreaFromMap(areaId) {
@@ -810,15 +845,28 @@ class AgroGPSApp {
   }
 
   updateAreaSelect() {
-    const select = document.getElementById("area-select")
-    select.innerHTML = '<option value="">Selecciona un área</option>'
+    const areaSelect = document.getElementById("area-select")
+    areaSelect.innerHTML = '<option value="">Selecciona un área</option>'
 
     this.areas.forEach((area) => {
       const option = document.createElement("option")
       option.value = area.id
       option.textContent = `${area.name} (${area.area.toFixed(2)} ha) ${area.owner ? '- ' + area.owner : ''}`
-      select.appendChild(option)
+      areaSelect.add(option)
     })
+    areaSelect.value = this.selectedArea ? this.selectedArea.id : ""
+  }
+
+  toggleDeleteButton() {
+    const deleteButton = document.getElementById("delete-area-btn")
+    if (deleteButton) {
+      deleteButton.disabled = !this.selectedArea
+      if (this.selectedArea) {
+        deleteButton.classList.remove("opacity-50", "cursor-not-allowed")
+      } else {
+        deleteButton.classList.add("opacity-50", "cursor-not-allowed")
+      }
+    }
   }
 
   saveData() {
