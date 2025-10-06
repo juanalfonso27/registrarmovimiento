@@ -756,9 +756,14 @@ class AgroGPSApp {
                             <p class="text-sm text-gray-600">${area.area.toFixed(2)} hectáreas • <span class="text-xs text-gray-500">Propietario: ${area.owner || '—'}</span></p>
                             <p class="text-xs text-gray-500">${areaProducts.length} productos aplicados</p>
                         </div>
-                        <div class="text-right flex items-center space-x-2">
-                            <button onclick="event.stopPropagation(); app.editAreaDetails('${area.id}')" class="bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded text-xs" title="Editar Área">Editar</button>
-                            <button onclick="event.stopPropagation(); app.deleteAreaById('${area.id}')" class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-xs" title="Eliminar Área">Eliminar</button>
+                        <div class="text-right flex items-center space-x-2 relative"> <!-- Added relative positioning for dropdown -->
+                            <button class="p-1 rounded-full hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-300" onclick="event.stopPropagation(); app.toggleAreaMenu('${area.id}')">
+                                <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"></path></svg>
+                            </button>
+                            <div id="area-menu-${area.id}" class="hidden absolute right-0 mt-2 w-40 bg-white rounded-md shadow-lg z-10">
+                                <button onclick="event.stopPropagation(); app.editAreaDetails('${area.id}'); app.toggleAreaMenu('${area.id}')" class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Editar</button>
+                                <button onclick="event.stopPropagation(); app.deleteAreaById('${area.id}'); app.toggleAreaMenu('${area.id}')" class="block w-full text-left px-4 py-2 text-sm text-red-700 hover:bg-red-100">Eliminar</button>
+                            </div>
                             <span class="inline-block w-3 h-3 bg-green-500 rounded-full"></span>
                         </div>
                     </div>
@@ -1161,6 +1166,14 @@ class AgroGPSApp {
     // Keep the current area selected in the dropdown
     document.getElementById('area-select').value = areaToEdit.id
     this.selectArea(areaToEdit.id)
+  }
+
+  // New method to toggle the visibility of the area action menu
+  toggleAreaMenu(areaId) {
+    const menu = document.getElementById(`area-menu-${areaId}`)
+    if (menu) {
+      menu.classList.toggle('hidden')
+    }
   }
 
   // Method to render product edit form (new private helper)
