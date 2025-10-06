@@ -5,8 +5,8 @@ class AgroGPSApp {
   constructor() {
     this.map = null
     this.drawnItems = null
-    this.areas = JSON.parse(localStorage.getItem("agro-areas") || "[]")
-    this.products = JSON.parse(localStorage.getItem("agro-products") || "[]")
+    this.areas = [] // Initialize as empty, data will come from Firestore
+    this.products = [] // Initialize as empty, data will come from Firestore
     this.selectedArea = null
     this.userLocationMarker = null
 
@@ -112,7 +112,7 @@ class AgroGPSApp {
     this.products = this.products.filter((product) => product.areaId !== areaId);
 
     // Save to local storage immediately
-    this.saveData();
+    // this.saveData();
 
     // Delete from Firestore
     if (removedArea.owner) {
@@ -341,7 +341,7 @@ class AgroGPSApp {
     this.drawnItems.addLayer(layer)
 
     // Save and update UI
-    this.saveData()
+    // this.saveData()
   // Save just this area to Firestore
   this.saveAreaToFirestore(areaData).catch((e) => console.warn(e))
     this.updateStats()
@@ -373,7 +373,7 @@ class AgroGPSApp {
       }
     })
 
-    this.saveData()
+    // this.saveData()
     this.updateStats()
     this.updateAreasList()
     this.updateAreaSelect()
@@ -403,7 +403,7 @@ class AgroGPSApp {
       }
     })
 
-    this.saveData()
+    // this.saveData()
     this.updateStats()
     this.updateAreasList()
     // Area sizes or names may have changed; update select and keep selection
@@ -580,7 +580,7 @@ class AgroGPSApp {
 
     // Append and save
     this.products.push(...newProducts)
-    this.saveData()
+    // this.saveData()
 
     // Save each new product to Firestore individually
     for (const np of newProducts) {
@@ -899,10 +899,10 @@ class AgroGPSApp {
     }
   }
 
-  saveData() {
-    localStorage.setItem("agro-areas", JSON.stringify(this.areas))
-    localStorage.setItem("agro-products", JSON.stringify(this.products))
-  }
+  // saveData() {
+  //   localStorage.setItem("agro-areas", JSON.stringify(this.areas))
+  //   localStorage.setItem("agro-products", JSON.stringify(this.products))
+  // }
 
   // Per-document Firestore operations (efficient — write only what changed)
   async saveAreaToFirestore(area) {
@@ -1043,19 +1043,19 @@ class AgroGPSApp {
     const { collection, onSnapshot } = mod
 
     // Try to load owners from cache first
-    let cachedOwners = loadFromCache('propietarios');
-    if (cachedOwners) {
-      console.log('Loading owners from cache...');
-      this.propietarios = cachedOwners;
-      // Optionally, render UI with cached data immediately
-    }
+    // let cachedOwners = loadFromCache('propietarios');
+    // if (cachedOwners) {
+    //   console.log('Loading owners from cache...');
+    //   this.propietarios = cachedOwners;
+    //   // Optionally, render UI with cached data immediately
+    // }
 
     // Set up real-time listener for owners
     const propietariosCol = collection(db, 'propietario');
     onSnapshot(propietariosCol, (snapshot) => {
       const owners = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       this.propietarios = owners;
-      saveToCache('propietarios', owners);
+      // saveToCache('propietarios', owners);
       console.log('Owners updated from Firestore (and cached).');
       // Trigger UI update if necessary
 
@@ -1082,7 +1082,7 @@ class AgroGPSApp {
           this.allAreas = [...this.allAreas, ...ownerAreas];
           // Update the main areas array for the app
           this.areas = [...this.allAreas];
-          saveToCache('agro-areas', this.areas);
+          // saveToCache('agro-areas', this.areas);
           console.log(`Areas for owner ${ownerId} updated (and cached).`);
           // Trigger UI update if necessary
           this.loadAreas();
@@ -1101,7 +1101,7 @@ class AgroGPSApp {
           this.allProducts = [...this.allProducts, ...ownerProducts];
           // Update the main products array for the app
           this.products = [...this.allProducts];
-          saveToCache('agro-products', this.products);
+          // saveToCache('agro-products', this.products);
           console.log(`Products for owner ${ownerId} updated (and cached).`);
           // Trigger UI update if necessary
           this.updateAreasList(); // Products are displayed within areas list
@@ -1113,6 +1113,7 @@ class AgroGPSApp {
     }, (error) => {
       console.error('Error listening to owners:', error);
     });
+
   }
 
   // Export areas and their products to a PDF document
@@ -1273,7 +1274,7 @@ class AgroGPSApp {
     }
 
     // Save data and update UI
-    this.saveData()
+    // this.saveData()
     await this.saveAreaToFirestore(areaToEdit).catch((e) => console.warn(e + ' (from editAreaDetails)'))
     this.updateStats()
     this.updateAreasList()
@@ -1382,7 +1383,7 @@ class AgroGPSApp {
     }
 
     this.products = this.products.filter(p => p.id !== productId)
-    this.saveData()
+    // this.saveData()
     
     // Get the owner for Firestore deletion
     const areaOfProduct = this.areas.find(area => area.id === productToDelete.areaId)
@@ -1478,7 +1479,7 @@ class AgroGPSApp {
     productToEdit.updated = new Date().toISOString()
 
     // Save data and update UI
-    this.saveData()
+    // this.saveData()
     await this.saveProductToFirestore(productToEdit).catch((e) => console.warn(e + ' (from saveProductDetails)'))
     this.updateAreasList()
     // After saving, hide the form and show the display again
@@ -1521,28 +1522,28 @@ document.addEventListener("DOMContentLoaded", () => {
 })
 
 // Caching functions
-function saveToCache(key, data) {
-  try {
-    localStorage.setItem(key, JSON.stringify(data));
-  } catch (e) {
-    console.error("Error saving to cache:", e);
-  }
-}
+// function saveToCache(key, data) {
+//   try {
+//     localStorage.setItem(key, JSON.stringify(data));
+//   } catch (e) {
+//     console.error("Error saving to cache:", e);
+//   }
+// }
 
-function loadFromCache(key) {
-  try {
-    const data = localStorage.getItem(key);
-    return data ? JSON.parse(data) : null;
-  } catch (e) {
-    console.error("Error loading from cache:", e);
-    return null;
-  }
-}
+// function loadFromCache(key) {
+//   try {
+//     const data = localStorage.getItem(key);
+//     return data ? JSON.parse(data) : null;
+//   } catch (e) {
+//     console.error("Error loading from cache:", e);
+//     return null;
+//   }
+// }
 
-function removeFromCache(key) {
-  try {
-    localStorage.removeItem(key);
-  } catch (e) {
-    console.error("Error removing from cache:", e);
-  }
-}
+// function removeFromCache(key) {
+//   try {
+//     localStorage.removeItem(key);
+//   } catch (e) {
+//     console.error("Error removing from cache:", e);
+//   }
+// }
