@@ -757,6 +757,7 @@ class AgroGPSApp {
                             <p class="text-xs text-gray-500">${areaProducts.length} productos aplicados</p>
                         </div>
                         <div class="text-right flex items-center space-x-2">
+                            <button onclick="event.stopPropagation(); app.editAreaDetails('${area.id}')" class="bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded text-xs" title="Editar Área">Editar</button>
                             <button onclick="event.stopPropagation(); app.deleteAreaById('${area.id}')" class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-xs" title="Eliminar Área">Eliminar</button>
                             <span class="inline-block w-3 h-3 bg-green-500 rounded-full"></span>
                         </div>
@@ -1105,6 +1106,55 @@ class AgroGPSApp {
     }
 
     doc.save(`reporte_areas_agrogps${filterByOwner ? `_${filterByOwner}` : ''}.pdf`)
+  }
+
+  async editAreaDetails(areaId) {
+    const areaToEdit = this.areas.find(area => area.id === areaId)
+    if (!areaToEdit) {
+      console.warn(`Area with ID ${areaId} not found.`)
+      return
+    }
+
+    const newName = prompt("Editar nombre del área:", areaToEdit.name)
+    if (newName === null) return // User cancelled
+
+    let newOwner = newName.trim() ? prompt('Editar propietario del área (obligatorio):', areaToEdit.owner) : null
+    if (newOwner === null) return // User cancelled
+    newOwner = newOwner.trim()
+
+    if (!newName.trim() || !newOwner) {
+      alert('El nombre del área y el propietario son obligatorios.')
+      return
+    }
+
+    // Update the area object
+    areaToEdit.name = newName.trim()
+    areaToEdit.owner = newOwner
+
+    // Update the corresponding Leaflet layer's popup
+    const layerToUpdate = this.drawnItems.getLayers().find(layer => layer.areaId === areaId)
+    if (layerToUpdate) {
+      layerToUpdate.bindPopup(`
+                    <div class="text-center">
+                        <h4 class="font-bold text-green-700">${areaToEdit.name}</h4>
+                        <p class="text-sm text-gray-600">${areaToEdit.area.toFixed(2)} hectáreas</p>
+                        <p class="text-xs text-gray-500">Propietario: ${areaToEdit.owner || '—'}</p>
+                        <button onclick="app.selectAreaFromMap('${areaToEdit.id}')" class="mt-2 bg-green-600 text-white px-3 py-1 rounded text-xs hover:bg-green-700">
+                            Seleccionar
+                        </button>
+                    </div>
+                `)._updateContent()
+    }
+
+    // Save data and update UI
+    this.saveData()
+    await this.saveAreaToFirestore(areaToEdit).catch((e) => console.warn(e + ' (from editAreaDetails)'))
+    this.updateStats()
+    this.updateAreasList()
+    this.updateAreaSelect()
+    // Keep the current area selected in the dropdown
+    document.getElementById('area-select').value = areaToEdit.id
+    this.selectArea(areaToEdit.id)
   }
 }
 
