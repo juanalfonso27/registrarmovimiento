@@ -135,7 +135,7 @@ class AgroGPSApp {
     // Export to PDF button
     const exportPdfBtn = document.getElementById('export-pdf-btn')
     if (exportPdfBtn) {
-      exportPdfBtn.addEventListener('click', () => this.showAreaSelectionModal())
+      exportPdfBtn.addEventListener('click', () => this.promptOwnerForPdf())
     }
 
     // Areas search/filter
@@ -1185,32 +1185,12 @@ class AgroGPSApp {
   }
 
   // New methods for PDF area selection modal
-  showAreaSelectionModal() {
-    const modal = document.getElementById('area-select-modal')
-    const areaListContainer = document.getElementById('modal-area-list')
-    if (!modal || !areaListContainer) return
+  promptOwnerForPdf() {
+    const ownerInput = prompt("Ingresa el nombre del propietario para el reporte (dejar en blanco para todos los propietarios):", "")
+    if (ownerInput === null) return // User cancelled
 
-    areaListContainer.innerHTML = '' // Clear previous list
-
-    if (this.areas.length === 0) {
-      areaListContainer.innerHTML = '<p class="text-gray-500">No hay áreas registradas.</p>'
-    } else {
-      this.areas.forEach(area => {
-        const checkboxDiv = document.createElement('div')
-        checkboxDiv.className = 'flex items-center'
-        checkboxDiv.innerHTML = `
-          <input type="checkbox" id="area-checkbox-${area.id}" value="${area.id}" class="form-checkbox h-4 w-4 text-green-600 rounded-sm focus:ring-green-500">
-          <label for="area-checkbox-${area.id}" class="ml-2 text-sm text-gray-700">${area.name} (${area.area.toFixed(2)} ha)</label>
-        `
-        areaListContainer.appendChild(checkboxDiv)
-      })
-    }
-
-    modal.classList.remove('hidden')
-
-    // Add event listeners for modal buttons
-    document.getElementById('cancel-pdf-export').onclick = () => this.hideAreaSelectionModal()
-    document.getElementById('confirm-pdf-export').onclick = () => this.handlePdfExportConfirmation()
+    const filterByOwner = ownerInput.trim().toLowerCase()
+    this._showAreaSelectionModal(filterByOwner)
   }
 
   hideAreaSelectionModal() {
