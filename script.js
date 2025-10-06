@@ -764,7 +764,6 @@ class AgroGPSApp {
                                 <button onclick="event.stopPropagation(); app.editAreaDetails('${area.id}'); app.toggleAreaMenu('${area.id}')" class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Editar</button>
                                 <button onclick="event.stopPropagation(); app.deleteAreaById('${area.id}'); app.toggleAreaMenu('${area.id}')" class="block w-full text-left px-4 py-2 text-sm text-red-700 hover:bg-red-100">Eliminar</button>
                             </div>
-                            <span class="inline-block w-3 h-3 bg-green-500 rounded-full"></span>
                         </div>
                     </div>
                     ${
