@@ -1006,7 +1006,7 @@ class AgroGPSApp {
   }
 
   // Export areas and their products to a PDF document
-  async exportAreasToPdf(selectedAreaIds = null) {
+  async exportAreasToPdf(selectedAreaIds = null, ownerFilter = null) {
     const { jsPDF } = window.jspdf
     const doc = new jsPDF()
 
@@ -1020,6 +1020,11 @@ class AgroGPSApp {
     } else if (selectedAreaIds && selectedAreaIds.length === 0) {
         alert('No se seleccionaron áreas para generar el PDF.')
         return
+    }
+
+    if (ownerFilter) {
+      filteredAreas = filteredAreas.filter(area => area.owner.toLowerCase() === ownerFilter.toLowerCase())
+      filteredProducts = filteredProducts.filter(product => product.areaId && this.areas.find(a => a.id === product.areaId)?.owner.toLowerCase() === ownerFilter.toLowerCase())
     }
 
     doc.setFontSize(18)
@@ -1185,12 +1190,49 @@ class AgroGPSApp {
   }
 
   // New methods for PDF area selection modal
-  promptOwnerForPdf() {
-    const ownerInput = prompt("Ingresa el nombre del propietario para el reporte (dejar en blanco para todos los propietarios):", "")
-    if (ownerInput === null) return // User cancelled
+  showAreaSelectionModal(filterByOwner = null) {
+    const modal = document.getElementById('area-select-modal')
+    const areaListContainer = document.getElementById('modal-area-list')
+    if (!modal || !areaListContainer) return
 
-    const filterByOwner = ownerInput.trim().toLowerCase()
-    this._showAreaSelectionModal(filterByOwner)
+    areaListContainer.innerHTML = '' // Clear previous list
+
+    let areasToDisplay = this.areas
+    if (filterByOwner) {
+      areasToDisplay = this.areas.filter(area => area.owner.toLowerCase() === filterByOwner.toLowerCase())
+    }
+
+    if (areasToDisplay.length === 0) {
+      areaListContainer.innerHTML = '<p class="text-gray-500">No hay áreas registradas para este propietario.</p>'
+      if (!filterByOwner) areaListContainer.innerHTML = '<p class="text-gray-500">No hay áreas registradas.</p>'
+    } else {
+      areasToDisplay.forEach(area => {
+        const checkboxDiv = document.createElement('div')
+        checkboxDiv.className = 'flex items-center'
+        checkboxDiv.innerHTML = `
+          <input type="checkbox" id="area-checkbox-${area.id}" value="${area.id}" class="form-checkbox h-4 w-4 text-green-600 rounded-sm focus:ring-green-500">
+          <label for="area-checkbox-${area.id}" class="ml-2 text-sm text-gray-700">${area.name} (${area.area.toFixed(2)} ha)</label>
+        `
+        areaListContainer.appendChild(checkboxDiv)
+      })
+      // Add select all button
+      const selectAllDiv = document.createElement('div')
+      selectAllDiv.className = 'flex items-center mt-4 pt-2 border-t border-gray-200'
+      selectAllDiv.innerHTML = `
+        <button id="select-all-areas" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-lg text-sm">Seleccionar Todas las Áreas (${areasToDisplay.length})</button>
+      `
+      areaListContainer.appendChild(selectAllDiv)
+    }
+
+    modal.classList.remove('hidden')
+
+    // Add event listeners for modal buttons
+    document.getElementById('cancel-pdf-export').onclick = () => this.hideAreaSelectionModal()
+    document.getElementById('confirm-pdf-export').onclick = () => this.handlePdfExportConfirmation(filterByOwner)
+    const selectAllBtn = document.getElementById('select-all-areas')
+    if (selectAllBtn) {
+      selectAllBtn.onclick = () => this.toggleSelectAllAreas(true, areasToDisplay.map(a => a.id))
+    }
   }
 
   hideAreaSelectionModal() {
@@ -1200,13 +1242,21 @@ class AgroGPSApp {
     }
   }
 
-  handlePdfExportConfirmation() {
+  handlePdfExportConfirmation(filterByOwner = null) {
     const selectedAreaIds = []
     document.querySelectorAll('#modal-area-list input[type="checkbox"]:checked').forEach(checkbox => {
       selectedAreaIds.push(checkbox.value)
     })
     this.hideAreaSelectionModal()
-    this.exportAreasToPdf(selectedAreaIds)
+    this.exportAreasToPdf(selectedAreaIds, filterByOwner)
+  }
+
+  toggleSelectAllAreas(check, areaIds) {
+    document.querySelectorAll('#modal-area-list input[type="checkbox"]').forEach(checkbox => {
+        if (areaIds.includes(checkbox.value)) {
+            checkbox.checked = check
+        }
+    })
   }
 
   // New method to delete a product by its ID
@@ -1317,6 +1367,13 @@ class AgroGPSApp {
     this.updateAreasList()
     // After saving, hide the form and show the display again
     this.toggleProductEditForm(productId, false)
+  }
+
+  async promptOwnerForPdf() {
+    const ownerInput = prompt("Ingresa el nombre del propietario para el reporte (dejar en blanco para todos):")
+    if (ownerInput === null) return // User cancelled
+    const filterByOwner = ownerInput ? ownerInput.trim() : null
+    this.showAreaSelectionModal(filterByOwner)
   }
 }
 
