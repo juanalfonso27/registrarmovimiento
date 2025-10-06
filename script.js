@@ -76,13 +76,16 @@ class AgroGPSApp {
     // Event listener for custom delete button
     document.getElementById("delete-area-btn").addEventListener("click", () => {
       if (this.selectedArea) {
+        if (!confirm('¿Está seguro de que desea eliminar el área seleccionada y todos sus productos? Esta acción es irreversible.')) {
+          return; // User cancelled
+        }
         const selectedLayer = this.drawnItems.getLayers().find(layer => layer.areaId === this.selectedArea?.id)
         if (selectedLayer) {
-          this.drawnItems.removeLayer(selectedLayer)
-          // Manually trigger the onAreaDeleted since removing layer directly doesn't fire L.Draw.Event.DELETED
-          this.onAreaDeleted({ layers: new L.LayerGroup([selectedLayer]) })
+          this.drawnItems.removeLayer(selectedLayer) // This will trigger L.Draw.Event.DELETED and call onAreaDeleted
         } else {
           console.warn("Selected area layer not found on map.")
+          // Even if layer not on map, still try to remove from local data and Firestore
+          this.deleteAreaById(this.selectedArea.id, { skipConfirmation: true }); // Call internal method
         }
       } else {
         alert("Por favor, selecciona un área para eliminar.")
@@ -90,39 +93,46 @@ class AgroGPSApp {
     })
   }
 
+  // This event handler is now purely for internal state updates after a layer is removed from the map
   onAreaDeleted(e) {
     e.layers.eachLayer((layer) => {
       if (layer.areaId) {
-        const deletedAreaId = layer.areaId;
-        const removedArea = this.areas.find((area) => area.id === deletedAreaId);
-
-        // Remove from local cache
-        this.areas = this.areas.filter((area) => area.id !== deletedAreaId);
-        this.products = this.products.filter((product) => product.areaId !== deletedAreaId);
-
-        // Update local storage immediately
-        this.saveData();
-
-        // Delete from Firestore
-        if (removedArea && removedArea.owner) {
-          this.deleteAreaFromFirestore(deletedAreaId, removedArea.owner).catch((e) => console.warn(e));
-        }
-        this.products.filter((product) => product.areaId === deletedAreaId).forEach((rp) => {
-          this.deleteProductFromFirestore(rp.id, removedArea ? removedArea.owner : '').catch((e) => console.warn(e));
-        });
-
-        // Update UI
-        this.updateStats();
-        this.updateAreasList();
-        this.updateAreaSelect();
-
-        // If the deleted area was selected, deselect it
-        if (this.selectedArea && this.selectedArea.id === deletedAreaId) {
-          this.selectedArea = null;
-        }
+        this._deleteAreaFromLocalAndFirestore(layer.areaId);
       }
     });
-    this.toggleDeleteButton() // Update button state after deletion
+  }
+
+  // Internal method to handle deletion from local state, cache, Firestore, and UI updates
+  async _deleteAreaFromLocalAndFirestore(areaId) {
+    const removedArea = this.areas.find((area) => area.id === areaId);
+    if (!removedArea) return; // Area already removed or never existed
+
+    // Remove from local arrays
+    this.areas = this.areas.filter((area) => area.id !== areaId);
+    this.products = this.products.filter((product) => product.areaId !== areaId);
+
+    // Save to local storage immediately
+    this.saveData();
+
+    // Delete from Firestore
+    if (removedArea.owner) {
+      this.deleteAreaFromFirestore(areaId, removedArea.owner).catch((e) => console.warn(e));
+    }
+    // Delete associated products from Firestore
+    this.products.filter((product) => product.areaId === areaId).forEach((rp) => {
+      this.deleteProductFromFirestore(rp.id, removedArea.owner).catch((e) => console.warn(e));
+    });
+
+    // Update UI (stats and lists)
+    this.updateStats();
+    this.updateAreasList();
+    this.updateAreaSelect();
+
+    // If the deleted area was selected, deselect it
+    if (this.selectedArea && this.selectedArea.id === areaId) {
+      this.selectedArea = null;
+    }
+    this.toggleDeleteButton(); // Update button state after deletion
   }
 
   initMap() {
@@ -645,26 +655,21 @@ class AgroGPSApp {
     this.selectArea(areaId)
   }
 
-  deleteAreaById(areaId) {
-    if (!confirm('¿Está seguro de que desea eliminar esta área y todos sus productos? Esta acción es irreversible.')) {
+  deleteAreaById(areaId, options = {}) {
+    if (!options.skipConfirmation && !confirm('¿Está seguro de que desea eliminar esta área y todos sus productos? Esta acción es irreversible.')) {
       return
     }
 
     const layerToDelete = this.drawnItems.getLayers().find(layer => layer.areaId === areaId)
 
     if (layerToDelete) {
-      // This triggers the onAreaDeleted method internally
+      // This will trigger L.Draw.Event.DELETED and call onAreaDeleted
       this.drawnItems.removeLayer(layerToDelete)
+    } else {
+      console.warn(`Layer with areaId ${areaId} not found on map, performing local/Firestore deletion directly.`);
+      // If layer not on map, still ensure local data and Firestore are updated
+      this._deleteAreaFromLocalAndFirestore(areaId);
     }
-
-    // Additionally, remove from local state and update UI/cache immediately
-    this.areas = this.areas.filter((area) => area.id !== areaId)
-    this.products = this.products.filter((product) => product.areaId !== areaId)
-    this.saveData()
-    this.updateStats()
-    this.updateAreasList()
-    this.updateAreaSelect()
-    this.toggleDeleteButton()
   }
 
   getUserLocation() {
