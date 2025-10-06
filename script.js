@@ -91,17 +91,37 @@ class AgroGPSApp {
   }
 
   onAreaDeleted(e) {
-    e.layers.each((layer) => {
-      const deletedAreaId = layer.areaId
-      this.areas = this.areas.filter((area) => area.id !== deletedAreaId)
-      this.saveAreas()
-      this.updateAreasList()
-      this.updateAreaSelect()
-      this.updateStats()
-      if (this.selectedArea && this.selectedArea.id === deletedAreaId) {
-        this.selectedArea = null
+    e.layers.eachLayer((layer) => {
+      if (layer.areaId) {
+        const deletedAreaId = layer.areaId;
+        const removedArea = this.areas.find((area) => area.id === deletedAreaId);
+
+        // Remove from local cache
+        this.areas = this.areas.filter((area) => area.id !== deletedAreaId);
+        this.products = this.products.filter((product) => product.areaId !== deletedAreaId);
+
+        // Update local storage immediately
+        this.saveData();
+
+        // Delete from Firestore
+        if (removedArea && removedArea.owner) {
+          this.deleteAreaFromFirestore(deletedAreaId, removedArea.owner).catch((e) => console.warn(e));
+        }
+        this.products.filter((product) => product.areaId === deletedAreaId).forEach((rp) => {
+          this.deleteProductFromFirestore(rp.id, removedArea ? removedArea.owner : '').catch((e) => console.warn(e));
+        });
+
+        // Update UI
+        this.updateStats();
+        this.updateAreasList();
+        this.updateAreaSelect();
+
+        // If the deleted area was selected, deselect it
+        if (this.selectedArea && this.selectedArea.id === deletedAreaId) {
+          this.selectedArea = null;
+        }
       }
-    })
+    });
     this.toggleDeleteButton() // Update button state after deletion
   }
 
@@ -633,13 +653,18 @@ class AgroGPSApp {
     const layerToDelete = this.drawnItems.getLayers().find(layer => layer.areaId === areaId)
 
     if (layerToDelete) {
-      // Simulate a delete event for this single layer
-      const event = { layers: new L.FeatureGroup([layerToDelete]) }
-      this.onAreaDeleted(event)
-      this.drawnItems.removeLayer(layerToDelete) // Also remove from map visually
-    } else {
-      console.warn(`Layer with areaId ${areaId} not found on map.`)
+      // This triggers the onAreaDeleted method internally
+      this.drawnItems.removeLayer(layerToDelete)
     }
+
+    // Additionally, remove from local state and update UI/cache immediately
+    this.areas = this.areas.filter((area) => area.id !== areaId)
+    this.products = this.products.filter((product) => product.areaId !== areaId)
+    this.saveData()
+    this.updateStats()
+    this.updateAreasList()
+    this.updateAreaSelect()
+    this.toggleDeleteButton()
   }
 
   getUserLocation() {
@@ -1032,8 +1057,9 @@ class AgroGPSApp {
       // After owners are loaded, set up listeners for their areas and products
       this.allAreas = [];
       this.allProducts = [];
-      saveToCache('agro-areas', this.allAreas);
-      saveToCache('agro-products', this.allProducts);
+      // No need to save empty arrays to cache here, as they will be populated by sub-listeners
+      // saveToCache('agro-areas', this.allAreas);
+      // saveToCache('agro-products', this.allProducts);
 
       owners.forEach(owner => {
         const ownerId = owner.id;
@@ -1049,9 +1075,15 @@ class AgroGPSApp {
           // Remove old areas for this owner and add new ones
           this.allAreas = this.allAreas.filter(area => area.ownerId !== ownerId);
           this.allAreas = [...this.allAreas, ...ownerAreas];
-          saveToCache('agro-areas', this.allAreas);
+          // Update the main areas array for the app
+          this.areas = [...this.allAreas];
+          saveToCache('agro-areas', this.areas);
           console.log(`Areas for owner ${ownerId} updated (and cached).`);
           // Trigger UI update if necessary
+          this.loadAreas();
+          this.updateStats();
+          this.updateAreasList();
+          this.updateAreaSelect();
         }, (error) => {
           console.error(`Error listening to areas for owner ${ownerId}:`, error);
         });
@@ -1062,9 +1094,12 @@ class AgroGPSApp {
           // Remove old products for this owner and add new ones
           this.allProducts = this.allProducts.filter(product => product.ownerId !== ownerId);
           this.allProducts = [...this.allProducts, ...ownerProducts];
-          saveToCache('agro-products', this.allProducts);
+          // Update the main products array for the app
+          this.products = [...this.allProducts];
+          saveToCache('agro-products', this.products);
           console.log(`Products for owner ${ownerId} updated (and cached).`);
           // Trigger UI update if necessary
+          this.updateAreasList(); // Products are displayed within areas list
         }, (error) => {
           console.error(`Error listening to products for owner ${ownerId}:`, error);
         });
@@ -1343,7 +1378,13 @@ class AgroGPSApp {
 
     this.products = this.products.filter(p => p.id !== productId)
     this.saveData()
-    await this.deleteProductFromFirestore(productId, productToDelete.owner).catch((e) => console.warn(e + ' (from deleteProductById)'))
+    
+    // Get the owner for Firestore deletion
+    const areaOfProduct = this.areas.find(area => area.id === productToDelete.areaId)
+    if (areaOfProduct && areaOfProduct.owner) {
+      await this.deleteProductFromFirestore(productId, areaOfProduct.owner).catch((e) => console.warn(e + ' (from deleteProductById)'))
+    }
+    
     this.updateAreasList()
   }
 
