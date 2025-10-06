@@ -781,8 +781,14 @@ class AgroGPSApp {
                                             <div class="text-xs text-gray-600">${product.quantity} ${product.unit} • ${new Date(product.date).toLocaleDateString()}</div>
                                             ${product.workType ? `<div class="mt-1 text-xs text-gray-600">Tipo de Trabajo: ${product.workType}</div>` : ''}
                                         </div>
-                                        <div class="text-xs text-gray-500 text-right flex space-x-2 items-center">
-                                            <button onclick="event.stopPropagation(); app.toggleProductEditForm('${product.id}', true)" class="bg-amber-500 hover:bg-amber-600 text-white px-2 py-1 rounded-md" title="Editar Producto">Editar</button>
+                                        <div class="text-xs text-gray-500 text-right flex space-x-2 items-center relative"> <!-- Added relative positioning for dropdown -->
+                                            <button class="p-1 rounded-full hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-300" onclick="event.stopPropagation(); app.toggleProductMenu('${product.id}')">
+                                                <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"></path></svg>
+                                            </button>
+                                            <div id="product-menu-${product.id}" class="hidden absolute right-0 mt-2 w-40 bg-white rounded-md shadow-lg z-10">
+                                                <button onclick="event.stopPropagation(); app.toggleProductEditForm('${product.id}', true); app.toggleProductMenu('${product.id}')" class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Editar</button>
+                                                <button onclick="event.stopPropagation(); app.deleteProductById('${product.id}'); app.toggleProductMenu('${product.id}')" class="block w-full text-left px-4 py-2 text-sm text-red-700 hover:bg-red-100">Eliminar</button>
+                                            </div>
                                             <span>${product.created ? new Date(product.created).toLocaleString() : ''}</span>
                                         </div>
                                     </div>
@@ -1174,6 +1180,32 @@ class AgroGPSApp {
     if (menu) {
       menu.classList.toggle('hidden')
     }
+  }
+
+  // New method to toggle the visibility of the product action menu
+  toggleProductMenu(productId) {
+    const menu = document.getElementById(`product-menu-${productId}`)
+    if (menu) {
+      menu.classList.toggle('hidden')
+    }
+  }
+
+  // New method to delete a product by its ID
+  async deleteProductById(productId) {
+    if (!confirm('¿Está seguro de que desea eliminar este producto? Esta acción es irreversible.')) {
+      return
+    }
+
+    const productToDelete = this.products.find(p => p.id === productId)
+    if (!productToDelete) {
+      console.warn(`Product with ID ${productId} not found for deletion.`)
+      return
+    }
+
+    this.products = this.products.filter(p => p.id !== productId)
+    this.saveData()
+    await this.deleteProductFromFirestore(productId, productToDelete.owner).catch((e) => console.warn(e + ' (from deleteProductById)'))
+    this.updateAreasList()
   }
 
   // Method to render product edit form (new private helper)
