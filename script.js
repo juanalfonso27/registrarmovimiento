@@ -1010,47 +1010,69 @@ class AgroGPSApp {
     if (!window.firebaseDB) return
     const db = window.firebaseDB
     const mod = await import('https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js')
-    const { collection, getDocs } = mod
-    // Read owners collection and merge all owners' areas/products into local arrays
-    const allAreas = []
-    const allProducts = []
+    const { collection, onSnapshot } = mod
 
-    const propietariosCol = collection(db, 'propietario')
-    const propietariosSnap = await getDocs(propietariosCol)
-
-    for (const ownerDoc of propietariosSnap.docs) {
-      const ownerId = ownerDoc.id
-      // areas
-      try {
-  const areasSnap = await getDocs(collection(db, `propietario/${ownerId}/areas`))
-        for (const d of areasSnap.docs) {
-          const data = d.data()
-          if (data && typeof data.coordinates === 'string') {
-            try { data.coordinates = JSON.parse(data.coordinates) } catch (err) {}
-          }
-          allAreas.push(data)
-        }
-      } catch (err) {
-        // ignore per-owner errors
-      }
-
-      // products
-      try {
-  const prodsSnap = await getDocs(collection(db, `propietario/${ownerId}/products`))
-        for (const d of prodsSnap.docs) {
-          allProducts.push(d.data())
-        }
-      } catch (err) {
-        // ignore
-      }
+    // Try to load owners from cache first
+    let cachedOwners = loadFromCache('propietarios');
+    if (cachedOwners) {
+      console.log('Loading owners from cache...');
+      this.propietarios = cachedOwners;
+      // Optionally, render UI with cached data immediately
     }
 
-    if (allAreas.length > 0 || allProducts.length > 0) {
-      this.areas = allAreas
-      this.products = allProducts
-      localStorage.setItem('agro-areas', JSON.stringify(this.areas))
-      localStorage.setItem('agro-products', JSON.stringify(this.products))
-    }
+    // Set up real-time listener for owners
+    const propietariosCol = collection(db, 'propietario');
+    onSnapshot(propietariosCol, (snapshot) => {
+      const owners = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      this.propietarios = owners;
+      saveToCache('propietarios', owners);
+      console.log('Owners updated from Firestore (and cached).');
+      // Trigger UI update if necessary
+
+      // After owners are loaded, set up listeners for their areas and products
+      this.allAreas = [];
+      this.allProducts = [];
+      saveToCache('agro-areas', this.allAreas);
+      saveToCache('agro-products', this.allProducts);
+
+      owners.forEach(owner => {
+        const ownerId = owner.id;
+        // Areas for each owner
+        onSnapshot(collection(db, `propietario/${ownerId}/areas`), (areaSnapshot) => {
+          let ownerAreas = areaSnapshot.docs.map(doc => {
+            const data = doc.data();
+            if (data && typeof data.coordinates === 'string') {
+              try { data.coordinates = JSON.parse(data.coordinates) } catch (err) {}
+            }
+            return { id: doc.id, ...data };
+          });
+          // Remove old areas for this owner and add new ones
+          this.allAreas = this.allAreas.filter(area => area.ownerId !== ownerId);
+          this.allAreas = [...this.allAreas, ...ownerAreas];
+          saveToCache('agro-areas', this.allAreas);
+          console.log(`Areas for owner ${ownerId} updated (and cached).`);
+          // Trigger UI update if necessary
+        }, (error) => {
+          console.error(`Error listening to areas for owner ${ownerId}:`, error);
+        });
+
+        // Products for each owner
+        onSnapshot(collection(db, `propietario/${ownerId}/products`), (productSnapshot) => {
+          let ownerProducts = productSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          // Remove old products for this owner and add new ones
+          this.allProducts = this.allProducts.filter(product => product.ownerId !== ownerId);
+          this.allProducts = [...this.allProducts, ...ownerProducts];
+          saveToCache('agro-products', this.allProducts);
+          console.log(`Products for owner ${ownerId} updated (and cached).`);
+          // Trigger UI update if necessary
+        }, (error) => {
+          console.error(`Error listening to products for owner ${ownerId}:`, error);
+        });
+      });
+
+    }, (error) => {
+      console.error('Error listening to owners:', error);
+    });
   }
 
   // Export areas and their products to a PDF document
@@ -1451,3 +1473,30 @@ L.GeometryUtil = L.extend(L.GeometryUtil || {}, {
 document.addEventListener("DOMContentLoaded", () => {
   window.app = new AgroGPSApp()
 })
+
+// Caching functions
+function saveToCache(key, data) {
+  try {
+    localStorage.setItem(key, JSON.stringify(data));
+  } catch (e) {
+    console.error("Error saving to cache:", e);
+  }
+}
+
+function loadFromCache(key) {
+  try {
+    const data = localStorage.getItem(key);
+    return data ? JSON.parse(data) : null;
+  } catch (e) {
+    console.error("Error loading from cache:", e);
+    return null;
+  }
+}
+
+function removeFromCache(key) {
+  try {
+    localStorage.removeItem(key);
+  } catch (e) {
+    console.error("Error removing from cache:", e);
+  }
+}
