@@ -26,6 +26,9 @@ class AgroGPSApp {
     this.drawnItems = new L.FeatureGroup()
     this.map.addLayer(this.drawnItems)
 
+    // Call dummy data generation for testing
+    this.generateDummyData()
+
     this.loadAreas()
     this.updateStats()
     this.updateAreasList()
@@ -1275,6 +1278,85 @@ class AgroGPSApp {
     this.saveData()
     await this.deleteProductFromFirestore(productId, productToDelete.owner).catch((e) => console.warn(e + ' (from deleteProductById)'))
     this.updateAreasList()
+  }
+
+  // New method to generate dummy data for testing
+  generateDummyData() {
+    console.log("Generating dummy data...")
+
+    this.areas = []
+    this.products = []
+
+    const productTypes = ["Fungicida", "Herbicida", "Insecticida", "Foliare", "Fertilizante"]
+    const productUnits = ["litros", "kilos", "g", "ml"]
+    const workTypes = ["Siembra", "Fumigación", "Cosecha", "Fertilización"]
+
+    for (let i = 1; i <= 50; i++) {
+      const ownerName = `Propietario ${i}`
+      const numAreas = Math.floor(Math.random() * 5) + 1 // 1 to 5 areas per owner
+
+      for (let j = 1; j <= numAreas; j++) {
+        const areaId = `area-${ownerName.replace(/\s/g, '')}-${j}-${Date.now()}`
+        const areaName = `Campo ${j} de ${ownerName}`
+        const areaSize = (Math.random() * 100).toFixed(2) // Up to 100 hectares
+
+        // Generate random coordinates for a polygon/rectangle
+        const centerLat = -24.964116 + (Math.random() - 0.5) * 0.1 // Random offset
+        const centerLng = -55.2566249 + (Math.random() - 0.5) * 0.1 // Random offset
+        const latOffset = Math.random() * 0.005 + 0.001
+        const lngOffset = Math.random() * 0.005 + 0.001
+        const coordinates = [[ // Simple rectangle for dummy data
+          [centerLat - latOffset, centerLng - lngOffset],
+          [centerLat + latOffset, centerLng - lngOffset],
+          [centerLat + latOffset, centerLng + lngOffset],
+          [centerLat - latOffset, centerLng + lngOffset],
+          [centerLat - latOffset, centerLng - lngOffset], // Close the polygon
+        ]]
+
+        const areaData = {
+          id: areaId,
+          name: areaName,
+          owner: ownerName,
+          area: parseFloat(areaSize),
+          coordinates: coordinates,
+          type: "polygon", // Always polygon for simplicity
+          created: new Date().toISOString(),
+        }
+        this.areas.push(areaData)
+
+        const numProducts = Math.floor(Math.random() * 4) // 0 to 3 products per area
+        for (let k = 0; k < numProducts; k++) {
+          const productId = `product-${areaId}-${k}-${Date.now()}`
+          const productType = productTypes[Math.floor(Math.random() * productTypes.length)]
+          const productName = `Producto ${k + 1} (${productType})`
+          const productQuantity = (Math.random() * 50).toFixed(2)
+          const productUnit = productUnits[Math.floor(Math.random() * productUnits.length)]
+          const productWorkType = workTypes[Math.floor(Math.random() * workTypes.length)]
+          const productDate = new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] // Last 30 days
+          const productNotes = `Notas para ${productName} en ${areaName}`
+
+          const productData = {
+            id: productId,
+            areaId: areaId,
+            type: productType,
+            name: productName,
+            quantity: parseFloat(productQuantity),
+            unit: productUnit,
+            workType: productWorkType,
+            date: productDate,
+            notes: productNotes,
+            created: new Date().toISOString(),
+          }
+          this.products.push(productData)
+        }
+      }
+    }
+
+    this.saveData()
+    this.updateStats()
+    this.updateAreasList()
+    this.updateAreaSelect()
+    console.log("Dummy data generated and UI updated.")
   }
 
   // Method to render product edit form (new private helper)
