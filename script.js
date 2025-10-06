@@ -76,7 +76,7 @@ class AgroGPSApp {
     // Event listener for custom delete button
     document.getElementById("delete-area-btn").addEventListener("click", () => {
       if (this.selectedArea) {
-        const selectedLayer = this.drawnItems.getLayers().find(layer => layer.feature.properties.id === this.selectedArea.id)
+        const selectedLayer = this.drawnItems.getLayers().find(layer => layer.areaId === this.selectedArea?.id)
         if (selectedLayer) {
           this.drawnItems.removeLayer(selectedLayer)
           // Manually trigger the onAreaDeleted since removing layer directly doesn't fire L.Draw.Event.DELETED
@@ -92,7 +92,7 @@ class AgroGPSApp {
 
   onAreaDeleted(e) {
     e.layers.each((layer) => {
-      const deletedAreaId = layer.feature.properties.id
+      const deletedAreaId = layer.areaId
       this.areas = this.areas.filter((area) => area.id !== deletedAreaId)
       this.saveAreas()
       this.updateAreasList()
@@ -318,7 +318,7 @@ class AgroGPSApp {
     this.updateAreasList()
     this.updateAreaSelect()
     this.toggleDeleteButton() // Ensure this is present
-    // Auto-select the newly created area
+    // Automatically select the newly created area
     document.getElementById('area-select').value = areaData.id
     this.selectArea(areaData.id)
   }
@@ -574,7 +574,7 @@ class AgroGPSApp {
   }
 
   selectArea(areaId) {
-    this.selectedArea = areaId
+    this.selectedArea = this.areas.find(area => area.id === areaId) || null
 
     // Highlight selected area on map
     this.drawnItems.eachLayer((layer) => {
