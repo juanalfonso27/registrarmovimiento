@@ -135,7 +135,7 @@ class AgroGPSApp {
     // Export to PDF button
     const exportPdfBtn = document.getElementById('export-pdf-btn')
     if (exportPdfBtn) {
-      exportPdfBtn.addEventListener('click', () => this.exportAreasToPdf())
+      exportPdfBtn.addEventListener('click', () => this.showAreaSelectionModal())
     }
 
     // Areas search/filter
@@ -1006,29 +1006,24 @@ class AgroGPSApp {
   }
 
   // Export areas and their products to a PDF document
-  async exportAreasToPdf() {
+  async exportAreasToPdf(selectedAreaIds = null) {
     const { jsPDF } = window.jspdf
     const doc = new jsPDF()
-
-    const ownerInput = prompt("Ingresa el nombre del propietario para el reporte (dejar en blanco para todos):")
-    const filterByOwner = ownerInput ? ownerInput.trim() : null
 
     let filteredAreas = this.areas
     let filteredProducts = this.products
 
-    if (filterByOwner) {
-      filteredAreas = this.areas.filter(area => area.owner.toLowerCase() === filterByOwner.toLowerCase())
+    if (selectedAreaIds && selectedAreaIds.length > 0) {
+      filteredAreas = this.areas.filter(area => selectedAreaIds.includes(area.id))
       const areaIds = filteredAreas.map(area => area.id)
       filteredProducts = this.products.filter(product => areaIds.includes(product.areaId))
-
-      if (filteredAreas.length === 0) {
-        alert(`No se encontraron áreas para el propietario "${filterByOwner}".`) 
+    } else if (selectedAreaIds && selectedAreaIds.length === 0) {
+        alert('No se seleccionaron áreas para generar el PDF.')
         return
-      }
     }
 
     doc.setFontSize(18)
-    doc.text(`Reporte de Áreas Registradas${filterByOwner ? ` para ${filterByOwner}` : ''}`, 14, 22)
+    doc.text(`Reporte de Áreas Registradas`, 14, 22)
 
     let y = 30
 
@@ -1115,13 +1110,13 @@ class AgroGPSApp {
           doc.addPage()
           y = 22 // Reset Y for new page
           doc.setFontSize(14)
-          doc.text(`Reporte de Áreas Registradas (continuación)${filterByOwner ? ` para ${filterByOwner}` : ''}`, 14, 22)
+          doc.text(`Reporte de Áreas Registradas (continuación)`, 14, 22)
           y = 30
         }
       }
     }
 
-    doc.save(`reporte_areas_agrogps${filterByOwner ? `_${filterByOwner}` : ''}.pdf`)
+    doc.save(`reporte_areas_agrogps.pdf`)
   }
 
   async editAreaDetails(areaId) {
@@ -1187,6 +1182,51 @@ class AgroGPSApp {
     if (menu) {
       menu.classList.toggle('hidden')
     }
+  }
+
+  // New methods for PDF area selection modal
+  showAreaSelectionModal() {
+    const modal = document.getElementById('area-select-modal')
+    const areaListContainer = document.getElementById('modal-area-list')
+    if (!modal || !areaListContainer) return
+
+    areaListContainer.innerHTML = '' // Clear previous list
+
+    if (this.areas.length === 0) {
+      areaListContainer.innerHTML = '<p class="text-gray-500">No hay áreas registradas.</p>'
+    } else {
+      this.areas.forEach(area => {
+        const checkboxDiv = document.createElement('div')
+        checkboxDiv.className = 'flex items-center'
+        checkboxDiv.innerHTML = `
+          <input type="checkbox" id="area-checkbox-${area.id}" value="${area.id}" class="form-checkbox h-4 w-4 text-green-600 rounded-sm focus:ring-green-500">
+          <label for="area-checkbox-${area.id}" class="ml-2 text-sm text-gray-700">${area.name} (${area.area.toFixed(2)} ha)</label>
+        `
+        areaListContainer.appendChild(checkboxDiv)
+      })
+    }
+
+    modal.classList.remove('hidden')
+
+    // Add event listeners for modal buttons
+    document.getElementById('cancel-pdf-export').onclick = () => this.hideAreaSelectionModal()
+    document.getElementById('confirm-pdf-export').onclick = () => this.handlePdfExportConfirmation()
+  }
+
+  hideAreaSelectionModal() {
+    const modal = document.getElementById('area-select-modal')
+    if (modal) {
+      modal.classList.add('hidden')
+    }
+  }
+
+  handlePdfExportConfirmation() {
+    const selectedAreaIds = []
+    document.querySelectorAll('#modal-area-list input[type="checkbox"]:checked').forEach(checkbox => {
+      selectedAreaIds.push(checkbox.value)
+    })
+    this.hideAreaSelectionModal()
+    this.exportAreasToPdf(selectedAreaIds)
   }
 
   // New method to delete a product by its ID
