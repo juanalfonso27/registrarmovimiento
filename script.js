@@ -776,7 +776,10 @@ class AgroGPSApp {
                                             <div class="text-xs text-gray-600">${product.quantity} ${product.unit} • ${new Date(product.date).toLocaleDateString()}</div>
                                             ${product.workType ? `<div class="mt-1 text-xs text-gray-600">Tipo de Trabajo: ${product.workType}</div>` : ''}
                                         </div>
-                                        <div class="text-xs text-gray-500 text-right">${product.created ? new Date(product.created).toLocaleString() : ''}</div>
+                                        <div class="text-xs text-gray-500 text-right flex space-x-2 items-center">
+                                            <button onclick="event.stopPropagation(); app.editProductDetails('${product.id}')" class="bg-amber-500 hover:bg-amber-600 text-white px-2 py-1 rounded-md" title="Editar Producto">Editar</button>
+                                            <span>${product.created ? new Date(product.created).toLocaleString() : ''}</span>
+                                        </div>
                                     </div>
                                     ${product.notes ? `<div class="mt-2 text-xs text-gray-700">Notas: ${product.notes}</div>` : ''}
                                 </div>
@@ -1155,6 +1158,54 @@ class AgroGPSApp {
     // Keep the current area selected in the dropdown
     document.getElementById('area-select').value = areaToEdit.id
     this.selectArea(areaToEdit.id)
+  }
+
+  async editProductDetails(productId) {
+    const productToEdit = this.products.find(product => product.id === productId)
+    if (!productToEdit) {
+      console.warn(`Product with ID ${productId} not found.`)
+      return
+    }
+
+    const productTypes = ["Fungicida", "Herbicida", "Insecticida", "Foliare", "Fertilizante"]
+    const productUnits = ["litros", "kilos", "g", "ml"]
+
+    const newType = prompt("Editar tipo de producto:", productToEdit.type)
+    if (newType === null || !productTypes.includes(newType)) return // User cancelled or invalid type
+
+    const newName = prompt("Editar nombre del producto:", productToEdit.name)
+    if (newName === null || !newName.trim()) return // User cancelled or empty name
+
+    const newQuantityRaw = prompt("Editar dosis / cantidad:", productToEdit.quantity)
+    if (newQuantityRaw === null) return // User cancelled
+    const newQuantity = Number.parseFloat(newQuantityRaw)
+    if (Number.isNaN(newQuantity) || newQuantity <= 0) {
+      alert('Por favor ingresa una cantidad válida.')
+      return
+    }
+
+    const newUnit = prompt("Editar unidad:", productToEdit.unit)
+    if (newUnit === null || !productUnits.includes(newUnit)) return // User cancelled or invalid unit
+
+    const newWorkType = prompt("Editar tipo de trabajo:", productToEdit.workType || '')
+    if (newWorkType === null) return // User cancelled
+
+    const newNotes = prompt("Editar notas:", productToEdit.notes || '')
+    if (newNotes === null) return // User cancelled
+
+    // Update the product object
+    productToEdit.type = newType
+    productToEdit.name = newName.trim()
+    productToEdit.quantity = newQuantity
+    productToEdit.unit = newUnit
+    productToEdit.workType = newWorkType.trim()
+    productToEdit.notes = newNotes.trim()
+    productToEdit.updated = new Date().toISOString() // Add an updated timestamp
+
+    // Save data and update UI
+    this.saveData()
+    await this.saveProductToFirestore(productToEdit).catch((e) => console.warn(e + ' (from editProductDetails)'))
+    this.updateAreasList()
   }
 }
 
