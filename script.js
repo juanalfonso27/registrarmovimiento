@@ -62,7 +62,7 @@ class AgroGPSApp {
       },
       edit: {
         featureGroup: this.drawnItems,
-        remove: true, // Habilita la opción de eliminar elementos
+        remove: false // Disable the delete button from the Draw toolbar
       },
     })
 
