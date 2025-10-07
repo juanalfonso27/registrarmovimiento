@@ -1,4 +1,14 @@
 /* Custom styles for the agricultural GPS app */
+
+/* Loading overlay styles */
+#loading-overlay {
+  transition: opacity 0.5s ease-in-out;
+}
+
+#loading-overlay.opacity-0 {
+  opacity: 0;
+}
+
 .leaflet-control-draw-toolbar {
   background: white;
   border-radius: 8px;

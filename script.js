@@ -9,6 +9,7 @@ class AgroGPSApp {
     this.products = JSON.parse(localStorage.getItem("agro-products") || "[]")
     this.selectedArea = null
     this.userLocationMarker = null
+    this.isLoading = true
 
     this.init()
   }
@@ -16,11 +17,20 @@ class AgroGPSApp {
   async init() {
     this.initMap()
     this.initEventListeners()
+    
+    // Set a maximum loading time to prevent UI from being blocked indefinitely
+    const loadingTimeout = setTimeout(() => {
+      this.hideLoadingOverlay()
+    }, 15000) // 15 seconds maximum loading time
+    
     // Try to sync from Firestore (if available). This will replace local data if remote data exists.
     try {
       await this.syncFromFirestore()
     } catch (err) {
       console.warn('No se pudo sincronizar con Firestore en init:', err && err.message)
+    } finally {
+      clearTimeout(loadingTimeout)
+      this.hideLoadingOverlay()
     }
     // Initialize drawn items layer BEFORE loading areas so loadAreas can add layers into it
     this.drawnItems = new L.FeatureGroup()
@@ -167,6 +177,22 @@ class AgroGPSApp {
         console.warn('Error syncing after firebase-ready:', err && err.message)
       }
     })
+  }
+
+  // Hide the loading overlay when data is loaded
+  hideLoadingOverlay() {
+    if (!this.isLoading) return // Prevent multiple calls
+    
+    this.isLoading = false
+    const overlay = document.getElementById('loading-overlay')
+    if (overlay) {
+      // Add fade-out animation
+      overlay.classList.add('opacity-0')
+      // Remove from DOM after animation completes
+      setTimeout(() => {
+        overlay.classList.add('hidden')
+      }, 500)
+    }
   }
 
   toggleFullscreen() {
