@@ -1297,9 +1297,18 @@ class AgroGPSApp {
       return
     }
 
+    // Get the area to find the owner before modifying this.products
+    const areaOfProduct = this.areas.find(area => area.id === productToDelete.areaId)
+    if (!areaOfProduct || !areaOfProduct.owner) {
+      console.warn(`Area or owner not found for product ${productId}, skipping Firestore product deletion.`)
+      alert('No se pudo determinar el propietario del área para eliminar el producto de Firestore.')
+      return
+    }
+    const owner = areaOfProduct.owner
+
     this.products = this.products.filter(p => p.id !== productId)
     this.saveAreas()
-    await this.deleteProductFromFirestore(productId, productToDelete.owner).catch((e) => console.warn(e + ' (from deleteProductById)'))
+    await this.deleteProductFromFirestore(productId, owner).catch((e) => console.warn(e + ' (from deleteProductById)'))
     this.updateAreasList()
   }
 
