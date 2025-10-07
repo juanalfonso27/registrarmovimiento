@@ -769,8 +769,15 @@ class AgroGPSApp {
     const totalAreas = this.areas.length
     const totalHectares = this.areas.reduce((sum, area) => sum + area.area, 0)
 
-    document.getElementById("total-areas").textContent = totalAreas
-    document.getElementById("total-hectares").textContent = totalHectares.toFixed(2)
+    const totalAreasElement = document.getElementById("total-areas")
+    const totalHectaresElement = document.getElementById("total-hectares")
+
+    if (totalAreasElement) {
+      totalAreasElement.textContent = totalAreas
+    }
+    if (totalHectaresElement) {
+      totalHectaresElement.textContent = totalHectares.toFixed(2)
+    }
   }
 
   updateAreasList(filter = '') {
