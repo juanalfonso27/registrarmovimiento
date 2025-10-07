@@ -2,9 +2,7 @@
 // Exporta referencias útiles en window para que el resto de la app las use.
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js'
-import { getAnalytics } from 'https://www.gstatic.com/firebasejs/9.22.2/firebase-analytics.js'
 import { getFirestore } from 'https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js'
-import { getAuth } from 'https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js'
 import { getStorage } from 'https://www.gstatic.com/firebasejs/9.22.2/firebase-storage.js'
 
 // Configuración proporcionada
@@ -30,8 +28,7 @@ try {
 
 // Inicializa otros SDKs
 const db = getFirestore(firebaseApp)
-const auth = getAuth(firebaseApp)
-const storage = getStorage(firebaseApp)
+
 
 // Exponer en window para uso sencillo desde script.js
 window.firebaseApp = firebaseApp
