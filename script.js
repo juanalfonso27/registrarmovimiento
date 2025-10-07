@@ -209,12 +209,6 @@ class AgroGPSApp {
         this.hideLoadingOverlay()
       }
     })
-
-    // Generate test data button
-    const generateTestDataBtn = document.getElementById('generate-test-data-btn');
-    if (generateTestDataBtn) {
-      generateTestDataBtn.addEventListener('click', () => this.generateTestData());
-    }
   }
 
   // Hide the loading overlay when data is loaded
@@ -230,19 +224,6 @@ class AgroGPSApp {
         overlay.classList.add('hidden')
       }, 500)
     }
-  }
-
-  // Show the loading overlay with a custom message
-  showLoadingOverlay(message = 'Cargando...') {
-      const overlay = document.getElementById('loading-overlay');
-      const messageElement = document.getElementById('loading-message'); // Assuming you have an element with this ID inside your overlay
-      if (overlay) {
-          if (messageElement) {
-              messageElement.textContent = message;
-          }
-          overlay.classList.remove('hidden');
-          overlay.classList.remove('opacity-0'); // Ensure it's visible and opaque
-      }
   }
 
   toggleFullscreen() {
@@ -1520,58 +1501,6 @@ class AgroGPSApp {
     this.updateAreasList()
     // After saving, hide the form and show the display again
     this.toggleProductEditForm(productId, false)
-  }
-
-  async generateTestData() {
-    if (!confirm('Esto generará 100 áreas y 2000 productos de prueba. ¿Continuar?')) return
-    this.showLoadingOverlay('Generando datos de prueba...')
-
-    const testAreas = []
-    const testProducts = []
-
-    for (let i = 0; i < 100; i++) {
-      const areaId = `test-area-${Date.now()}-${i}`
-      const ownerName = `Propietario ${Math.floor(i / 10) + 1}` // Group by owners
-      const area = {
-        id: areaId,
-        name: `Área de Prueba ${i + 1}`,
-        owner: ownerName,
-        area: parseFloat((Math.random() * 100).toFixed(2)), // Random area up to 100 ha
-        coordinates: [[[Math.random() * 10 + -25, Math.random() * 10 + -55]]], // Dummy coordinates
-        type: "polygon",
-        created: new Date().toISOString(),
-      }
-      testAreas.push(area)
-      await this.saveAreaToFirestore(area) // Save area to Firestore immediately
-
-      for (let j = 0; j < 20; j++) {
-        const productId = `test-product-${Date.now()}-${i}-${j}`
-        const product = {
-          id: productId,
-          areaId: areaId,
-          type: ["Fungicida", "Herbicida", "Insecticida", "Fertilizante"][Math.floor(Math.random() * 4)],
-          name: `Producto ${j + 1}`,
-          quantity: parseFloat((Math.random() * 50).toFixed(2)),
-          unit: ["litros", "kilos", "gramos", "ml"][Math.floor(Math.random() * 4)],
-          workType: ["Siembra", "Fumigación", "Cosecha"][Math.floor(Math.random() * 3)],
-          date: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // Last 30 days
-          notes: j % 5 === 0 ? `Notas para el producto ${j + 1}` : '',
-          created: new Date().toISOString(),
-        }
-        testProducts.push(product)
-        await this.saveProductToFirestore(product) // Save product to Firestore immediately
-      }
-    }
-
-    this.areas.push(...testAreas)
-    this.products.push(...testProducts)
-    this.saveAreas() // Save to local storage after all are processed
-
-    this.updateStats()
-    this.updateAreasList()
-    this.updateAreaSelect()
-    this.hideLoadingOverlay()
-    alert('¡Generación de datos de prueba completada!')
   }
 
   async promptOwnerForPdf() {

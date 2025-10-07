@@ -14,11 +14,10 @@
 </head>
 <body class="bg-gradient-to-br from-green-50 to-amber-50 min-h-screen">
     <!-- Loading Overlay -->
-    <div id="loading-overlay" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-[9999] transition-opacity duration-500 hidden opacity-0">
-        <div class="bg-white p-6 rounded-lg shadow-xl flex flex-col items-center">
-            <div class="animate-spin rounded-full h-12 w-12 border-4 border-green-500 border-t-transparent"></div>
-            <p id="loading-message" class="mt-4 text-lg font-semibold text-gray-700">Cargando...</p>
-        </div>
+    <div id="loading-overlay" class="fixed inset-0 bg-green-900 bg-opacity-80 z-50 flex flex-col items-center justify-center">
+        <div class="w-16 h-16 border-4 border-white border-t-transparent rounded-full loading-spinner mb-4"></div>
+        <h2 class="text-white text-xl font-bold">Cargando datos...</h2>
+        
     </div>
     
     <header class="bg-white shadow-lg border-b-4 border-green-600">
@@ -157,10 +156,6 @@
                         <div class="flex space-x-2">
                             <button id="export-pdf-btn" class="bg-white/10 hover:bg-white/20 text-white px-3 py-1 rounded-md text-sm">Generar PDF</button>
                             <button id="areas-fullscreen-btn" class="bg-white/10 hover:bg-white/20 text-white px-3 py-1 rounded-md text-sm">Pantalla completa</button>
-                            <!-- Nuevo botón para generar datos de prueba -->
-                            <button id="generate-test-data-btn" class="bg-white/10 hover:bg-white/20 text-white px-3 py-1 rounded-md text-sm" title="Generar Datos de Prueba">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                            </button>
                         </div>
                     </div>
                     <!-- Search box to filter registered areas -->
