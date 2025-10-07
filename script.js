@@ -50,7 +50,7 @@ class AgroGPSApp {
       },
       edit: {
         featureGroup: this.drawnItems,
-        remove: true,
+        remove: false, // Set to false to remove the default 'Delete' functionality
       },
     })
 
@@ -345,9 +345,8 @@ class AgroGPSApp {
             <button onclick="app.selectAreaFromMap('${area.id}')" class="mt-2 bg-green-600 text-white px-3 py-1 rounded text-xs hover:bg-green-700">
               Seleccionar
             </button>
-            <button onclick="app.deleteAreaById('${area.id}')" class="ml-2 mt-2 bg-red-600 text-white px-3 py-1 rounded text-xs hover:bg-red-700">
-              <svg class="w-4 h-4 inline-block align-text-bottom" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-              Eliminar
+            <button onclick="app.removeAreaFromMap('${area.id}')" class="ml-2 mt-2 bg-red-600 text-white px-3 py-1 rounded text-xs hover:bg-red-700">
+              <i class="fas fa-trash"></i>
             </button>
           </div>
         `)
@@ -390,6 +389,9 @@ class AgroGPSApp {
                             <p class="text-xs text-gray-500">Propietario: ${area.owner || '—'}</p>
                             <button onclick="app.selectAreaFromMap('${area.id}')" class="mt-2 bg-green-600 text-white px-3 py-1 rounded text-xs hover:bg-green-700">
                                 Seleccionar
+                            </button>
+                            <button onclick="app.removeAreaFromMap('${area.id}')" class="ml-2 mt-2 bg-red-600 text-white px-3 py-1 rounded text-xs hover:bg-red-700">
+                                <i class="fas fa-trash"></i>
                             </button>
                         </div>
                     `)
@@ -466,9 +468,8 @@ class AgroGPSApp {
                     <button onclick="app.selectAreaFromMap('${areaData.id}')" class="mt-2 bg-green-600 text-white px-3 py-1 rounded text-xs hover:bg-green-700">
                         Seleccionar
                     </button>
-                    <button onclick="app.deleteAreaById('${areaData.id}')" class="ml-2 mt-2 bg-red-600 text-white px-3 py-1 rounded text-xs hover:bg-red-700">
-                        <svg class="w-4 h-4 inline-block align-text-bottom" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                        Eliminar
+                    <button onclick="app.removeAreaFromMap('${areaData.id}')" class="ml-2 mt-2 bg-red-600 text-white px-3 py-1 rounded text-xs hover:bg-red-700">
+                        <i class="fas fa-trash"></i>
                     </button>
                 </div>
             `)
@@ -830,7 +831,7 @@ class AgroGPSApp {
                             </button>
                             <div id="area-menu-${area.id}" class="hidden absolute right-0 mt-2 w-40 bg-white rounded-md shadow-lg z-10">
                                 <button onclick="event.stopPropagation(); app.editAreaDetails('${area.id}'); app.toggleAreaMenu('${area.id}')" class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Editar</button>
-                                <!-- <button onclick="event.stopPropagation(); app.deleteAreaById('${area.id}'); app.toggleAreaMenu('${area.id}')" class="block w-full text-left px-4 py-2 text-sm text-red-700 hover:bg-red-100">Eliminar</button> -->
+                                <button onclick="event.stopPropagation(); app.deleteAreaById('${area.id}'); app.toggleAreaMenu('${area.id}')" class="block w-full text-left px-4 py-2 text-sm text-red-700 hover:bg-red-100">Eliminar</button>
                             </div>
                         </div>
                     </div>
@@ -1352,6 +1353,18 @@ class AgroGPSApp {
     this.saveAreas()
     await this.deleteProductFromFirestore(productId, owner).catch((e) => console.warn(e + ' (from deleteProductById)'))
     this.updateAreasList()
+  }
+
+  // This is called from the map popup to remove a single area
+  removeAreaFromMap(areaId) {
+    const layerToRemove = this.drawnItems.getLayers().find(layer => layer.areaId === areaId)
+    if (layerToRemove) {
+      // Call the internal Leaflet-Draw method to trigger the DELETED event
+      // This ensures onAreaDeleted is called and handles data removal
+      new L.Draw.Feature.Delete(this.map, { featureGroup: this.drawnItems }).removeLayer(layerToRemove)
+    } else {
+      console.warn(`Layer with ID ${areaId} not found on map for deletion.`)
+    }
   }
 
   // Method to render product edit form (new private helper)
