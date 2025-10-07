@@ -291,7 +291,7 @@ class AgroGPSApp {
   }
 
   removeArea(areaId) {
-    if (!confirm('¿Está seguro de que desea eliminar esta área y todos sus productos? Esta acción es irreversible.')) {
+    if (!confirm('¿Está seguro de que desea eliminar esta área y todos sus datos? Esta acción es irreversible.')) {
       return
     }
 
@@ -497,13 +497,13 @@ class AgroGPSApp {
         <option value="Fungicida">Fungicida</option>
         <option value="Herbicida">Herbicida</option>
         <option value="Insecticida">Insecticida</option>
-        <option value="Foliare">Foliare</option>
+        <option value="Foliar">Foliare</option>
         <option value="Fertilizante">Fertilizante</option>
       </select>
     </div>
     <div>
       <label class="block text-sm font-medium text-gray-700 mb-1">Nombre del Producto</label>
-      <input type="text" class="product-name w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent" placeholder="Ej: Urea 46%">
+      <input type="text" class="product-name w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent" placeholder="Ej: Previa 400">
     </div>
     <div>
       <label class="block text-sm font-medium text-gray-700 mb-1">Tipo de Trabajo</label>
@@ -519,7 +519,7 @@ class AgroGPSApp {
       <option value="litros">litros</option> 
       <option value="kilos">kilos</option>
         
-        <option value="g">gramos</option>
+        <option value="gramos">gramos</option>
         <option value="ml">ml</option>
       </select>
     </div>
