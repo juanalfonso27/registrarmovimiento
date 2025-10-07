@@ -23,23 +23,34 @@ class AgroGPSApp {
       this.hideLoadingOverlay()
     }, 15000) // 15 seconds maximum loading time
     
-    // Try to sync from Firestore (if available). This will replace local data if remote data exists.
     try {
+      // Initialize drawn items layer BEFORE loading areas
+      this.drawnItems = new L.FeatureGroup()
+      this.map.addLayer(this.drawnItems)
+      
+      // Try to sync from Firestore (if available). This will replace local data if remote data exists.
       await this.syncFromFirestore()
+      
+      // Process and display the data only after it's loaded
+      this.loadAreas()
+      this.updateStats()
+      this.updateAreasList()
+      this.updateAreaSelect()
+      
+      // Hide loading overlay only after all data is processed and UI is updated
+      clearTimeout(loadingTimeout)
+      this.hideLoadingOverlay()
     } catch (err) {
       console.warn('No se pudo sincronizar con Firestore en init:', err && err.message)
-    } finally {
+      // Even on error, we should still try to load any local data
+      this.loadAreas()
+      this.updateStats()
+      this.updateAreasList()
+      this.updateAreaSelect()
+      
       clearTimeout(loadingTimeout)
       this.hideLoadingOverlay()
     }
-    // Initialize drawn items layer BEFORE loading areas so loadAreas can add layers into it
-    this.drawnItems = new L.FeatureGroup()
-    this.map.addLayer(this.drawnItems)
-
-    this.loadAreas()
-    this.updateStats()
-    this.updateAreasList()
-    this.updateAreaSelect()
 
     // Initialize draw control
     const drawControl = new L.Control.Draw({
