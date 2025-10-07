@@ -346,7 +346,7 @@ class AgroGPSApp {
               Seleccionar
             </button>
             <button onclick="app.removeAreaFromMap('${area.id}')" class="ml-2 mt-2 bg-red-600 text-white px-3 py-1 rounded text-xs hover:bg-red-700">
-              <i class="fas fa-trash"></i>
+              Eliminar
             </button>
           </div>
         `)
@@ -391,7 +391,7 @@ class AgroGPSApp {
                                 Seleccionar
                             </button>
                             <button onclick="app.removeAreaFromMap('${area.id}')" class="ml-2 mt-2 bg-red-600 text-white px-3 py-1 rounded text-xs hover:bg-red-700">
-                                <i class="fas fa-trash"></i>
+                                Eliminar
                             </button>
                         </div>
                     `)
@@ -469,7 +469,7 @@ class AgroGPSApp {
                         Seleccionar
                     </button>
                     <button onclick="app.removeAreaFromMap('${areaData.id}')" class="ml-2 mt-2 bg-red-600 text-white px-3 py-1 rounded text-xs hover:bg-red-700">
-                        <i class="fas fa-trash"></i>
+                        Eliminar
                     </button>
                 </div>
             `)
