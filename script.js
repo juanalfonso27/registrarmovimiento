@@ -209,6 +209,12 @@ class AgroGPSApp {
         this.hideLoadingOverlay()
       }
     })
+
+    // Generate test data button
+    const generateTestDataBtn = document.getElementById('generate-test-data-btn');
+    if (generateTestDataBtn) {
+      generateTestDataBtn.addEventListener('click', () => this.generateTestData());
+    }
   }
 
   // Hide the loading overlay when data is loaded
@@ -224,6 +230,19 @@ class AgroGPSApp {
         overlay.classList.add('hidden')
       }, 500)
     }
+  }
+
+  // Show the loading overlay with a custom message
+  showLoadingOverlay(message = 'Cargando...') {
+      const overlay = document.getElementById('loading-overlay');
+      const messageElement = document.getElementById('loading-message'); // Assuming you have an element with this ID inside your overlay
+      if (overlay) {
+          if (messageElement) {
+              messageElement.textContent = message;
+          }
+          overlay.classList.remove('hidden');
+          overlay.classList.remove('opacity-0'); // Ensure it's visible and opaque
+      }
   }
 
   toggleFullscreen() {
