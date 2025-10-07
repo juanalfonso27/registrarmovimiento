@@ -1157,7 +1157,7 @@ class AgroGPSApp {
     // Update the corresponding Leaflet layer's popup
     const layerToUpdate = this.drawnItems.getLayers().find(layer => layer.areaId === areaId)
     if (layerToUpdate) {
-      layerToUpdate.bindPopup(`
+      layerToUpdate.setPopupContent(`
                     <div class="text-center">
                         <h4 class="font-bold text-green-700">${areaToEdit.name}</h4>
                         <p class="text-sm text-gray-600">${areaToEdit.area.toFixed(2)} hectáreas</p>
@@ -1166,7 +1166,7 @@ class AgroGPSApp {
                             Seleccionar
                         </button>
                     </div>
-                `)._updateContent()
+                `)
     }
 
     // Save data and update UI
