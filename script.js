@@ -5,8 +5,8 @@ class AgroGPSApp {
   constructor() {
     this.map = null
     this.drawnItems = null
-    this.areas = [] // Initialize as empty, data will come from Firestore
-    this.products = [] // Initialize as empty, data will come from Firestore
+    this.areas = JSON.parse(localStorage.getItem("agro-areas") || "[]")
+    this.products = JSON.parse(localStorage.getItem("agro-products") || "[]")
     this.selectedArea = null
     this.userLocationMarker = null
 
@@ -30,7 +30,6 @@ class AgroGPSApp {
     this.updateStats()
     this.updateAreasList()
     this.updateAreaSelect()
-    this.toggleDeleteButton() // Initial call to set button state
 
     // Initialize draw control
     const drawControl = new L.Control.Draw({
@@ -62,7 +61,7 @@ class AgroGPSApp {
       },
       edit: {
         featureGroup: this.drawnItems,
-        remove: false // Disable the delete button from the Draw toolbar
+        remove: true,
       },
     })
 
@@ -72,67 +71,6 @@ class AgroGPSApp {
     this.map.on(L.Draw.Event.CREATED, (e) => this.onAreaCreated(e))
     this.map.on(L.Draw.Event.DELETED, (e) => this.onAreaDeleted(e))
     this.map.on(L.Draw.Event.EDITED, (e) => this.onAreaEdited(e))
-
-    // Event listener for custom delete button
-    document.getElementById("delete-area-btn").addEventListener("click", () => {
-      if (this.selectedArea) {
-        if (!confirm('¿Está seguro de que desea eliminar el área seleccionada y todos sus productos? Esta acción es irreversible.')) {
-          return; // User cancelled
-        }
-        const selectedLayer = this.drawnItems.getLayers().find(layer => layer.areaId === this.selectedArea?.id)
-        if (selectedLayer) {
-          this.drawnItems.removeLayer(selectedLayer) // This will trigger L.Draw.Event.DELETED and call onAreaDeleted
-        } else {
-          console.warn("Selected area layer not found on map.")
-          // Even if layer not on map, still try to remove from local data and Firestore
-          this.deleteAreaById(this.selectedArea.id, { skipConfirmation: true }); // Call internal method
-        }
-      } else {
-        alert("Por favor, selecciona un área para eliminar.")
-      }
-    })
-  }
-
-  // This event handler is now purely for internal state updates after a layer is removed from the map
-  onAreaDeleted(e) {
-    e.layers.eachLayer((layer) => {
-      if (layer.areaId) {
-        this._deleteAreaFromLocalAndFirestore(layer.areaId);
-      }
-    });
-  }
-
-  // Internal method to handle deletion from local state, cache, Firestore, and UI updates
-  async _deleteAreaFromLocalAndFirestore(areaId) {
-    const removedArea = this.areas.find((area) => area.id === areaId);
-    if (!removedArea) return; // Area already removed or never existed
-
-    // Remove from local arrays
-    this.areas = this.areas.filter((area) => area.id !== areaId);
-    this.products = this.products.filter((product) => product.areaId !== areaId);
-
-    // Save to local storage immediately
-    // this.saveData();
-
-    // Delete from Firestore
-    if (removedArea.owner) {
-      this.deleteAreaFromFirestore(areaId, removedArea.owner).catch((e) => console.warn(e));
-    }
-    // Delete associated products from Firestore
-    this.products.filter((product) => product.areaId === areaId).forEach((rp) => {
-      this.deleteProductFromFirestore(rp.id, removedArea.owner).catch((e) => console.warn(e));
-    });
-
-    // Update UI (stats and lists)
-    this.updateStats();
-    this.updateAreasList();
-    this.updateAreaSelect();
-
-    // If the deleted area was selected, deselect it
-    if (this.selectedArea && this.selectedArea.id === areaId) {
-      this.selectedArea = null;
-    }
-    this.toggleDeleteButton(); // Update button state after deletion
   }
 
   initMap() {
@@ -295,24 +233,21 @@ class AgroGPSApp {
     }
   }
 
-  onAreaCreated(e) {
-    const layer = e.layer
+  createAreaObject(layer) {
     const area = this.calculateArea(layer)
-
-    // Prompt for area name
     const name = prompt("Nombre del área:", `Campo ${this.areas.length + 1}`)
-    if (!name) return
-    // Prompt for owner/propietario (obligatorio)
+    if (!name) return null
+
     let owner = ''
     while (true) {
       owner = prompt('Propietario del área (obligatorio):', '')
-      if (owner === null) return // user cancelled
+      if (owner === null) return null // user cancelled
       owner = owner.trim()
       if (owner) break
       alert('Por favor ingresa el nombre del propietario')
     }
 
-    const areaData = {
+    return {
       id: Date.now().toString(),
       name: name,
       owner: owner,
@@ -321,63 +256,72 @@ class AgroGPSApp {
       type: layer instanceof L.Polygon ? "polygon" : "rectangle",
       created: new Date().toISOString(),
     }
+  }
 
-    // Add to areas array
+  addArea(areaData) {
     this.areas.push(areaData)
+    this.saveAreaToFirestore(areaData).catch((e) => console.warn(e))
+  }
 
-    // Add to map with popup
-    layer.areaId = areaData.id
-    layer.bindPopup(`
-            <div class="text-center">
-                <h4 class="font-bold text-green-700">${name}</h4>
-        <p class="text-sm text-gray-600">${area.toFixed(2)} hectáreas</p>
-        <p class="text-xs text-gray-500">Propietario: ${owner || '—'}</p>
-                <button onclick="app.selectAreaFromMap('${areaData.id}')" class="mt-2 bg-green-600 text-white px-3 py-1 rounded text-xs hover:bg-green-700">
-                    Seleccionar
-                </button>
-            </div>
+  removeArea(areaId) {
+    if (!confirm('¿Está seguro de que desea eliminar esta área y todos sus productos? Esta acción es irreversible.')) {
+      return
+    }
+
+    const removed = this.areas.find((area) => area.id === areaId)
+    this.areas = this.areas.filter((area) => area.id !== areaId)
+
+    const relatedProducts = this.products.filter((product) => product.areaId === areaId)
+    this.products = this.products.filter((product) => product.areaId !== areaId)
+
+    if (removed && removed.owner) this.deleteAreaFromFirestore(removed.id, removed.owner).catch((e) => console.warn(e))
+    for (const rp of relatedProducts) {
+      this.deleteProductFromFirestore(rp.id, removed ? removed.owner : '').catch((e) => console.warn(e))
+    }
+  }
+
+  onAreaCreated(e) {
+    const type = e.layerType
+    const layer = e.layer
+
+    if (type === "polygon" || type === "rectangle") {
+      const area = this.createAreaObject(layer)
+      if (area) {
+        this.addArea(area)
+        layer.areaId = area.id // Store the custom ID on the layer
+        this.drawnItems.addLayer(layer)
+        // Update popup
+        layer.bindPopup(`
+          <div class="text-center">
+            <h4 class="font-bold text-green-700">${area.name}</h4>
+            <p class="text-sm text-gray-600">${area.area.toFixed(2)} hectáreas</p>
+            <p class="text-xs text-gray-500">Propietario: ${area.owner || '—'}</p>
+            <button onclick="app.selectAreaFromMap('${area.id}')" class="mt-2 bg-green-600 text-white px-3 py-1 rounded text-xs hover:bg-green-700">
+              Seleccionar
+            </button>
+          </div>
         `)
 
-    this.drawnItems.addLayer(layer)
-
-    // Save and update UI
-    // this.saveData()
-  // Save just this area to Firestore
-  this.saveAreaToFirestore(areaData).catch((e) => console.warn(e))
-    this.updateStats()
-    this.updateAreasList()
-    this.updateAreaSelect()
-    this.toggleDeleteButton() // Ensure this is present
-    // Automatically select the newly created area
-    document.getElementById('area-select').value = areaData.id
-    this.selectArea(areaData.id)
+        this.saveAreas()
+        this.updateAreasList()
+        this.updateAreaSelect()
+        // Auto-select the newly created area
+        document.getElementById('area-select').value = area.id
+        this.selectArea(area.id)
+      }
+    }
   }
 
   onAreaDeleted(e) {
-    if (!confirm('¿Está seguro de que desea eliminar los datos de esta área? Esta acción es irreversible.')) {
-      // If user cancels, stop the deletion process
-      return;
-    }
-    e.layers.eachLayer((layer) => {
+    e.layers.each((layer) => {
       if (layer.areaId) {
-        const removed = this.areas.find((area) => area.id === layer.areaId)
-        this.areas = this.areas.filter((area) => area.id !== layer.areaId)
-        // Delete related products and remote entries
-        const relatedProducts = this.products.filter((product) => product.areaId === layer.areaId)
-        this.products = this.products.filter((product) => product.areaId !== layer.areaId)
-        if (removed && removed.owner) this.deleteAreaFromFirestore(removed.id, removed.owner).catch((e) => console.warn(e))
-        for (const rp of relatedProducts) {
-          // delete each product remote
-          this.deleteProductFromFirestore(rp.id, removed ? removed.owner : '').catch((e) => console.warn(e))
-        }
+        this.removeArea(layer.areaId)
       }
     })
-
-    // this.saveData()
-    this.updateStats()
+    this.saveAreas()
     this.updateAreasList()
     this.updateAreaSelect()
-    this.toggleDeleteButton() // Ensure this is present
+    this.updateStats()
   }
 
   onAreaEdited(e) {
@@ -403,7 +347,7 @@ class AgroGPSApp {
       }
     })
 
-    // this.saveData()
+    this.saveAreas()
     this.updateStats()
     this.updateAreasList()
     // Area sizes or names may have changed; update select and keep selection
@@ -580,7 +524,7 @@ class AgroGPSApp {
 
     // Append and save
     this.products.push(...newProducts)
-    // this.saveData()
+    this.saveAreas()
 
     // Save each new product to Firestore individually
     for (const np of newProducts) {
@@ -604,7 +548,7 @@ class AgroGPSApp {
   }
 
   selectArea(areaId) {
-    this.selectedArea = this.areas.find(area => area.id === areaId) || null
+    this.selectedArea = areaId
 
     // Highlight selected area on map
     this.drawnItems.eachLayer((layer) => {
@@ -646,8 +590,6 @@ class AgroGPSApp {
     if (ownerLabel) {
       ownerLabel.textContent = areaObj ? `Propietario: ${areaObj.owner || '—'}` : 'Propietario: —'
     }
-    this.updateAreaSelect()
-    this.toggleDeleteButton()
   }
 
   selectAreaFromMap(areaId) {
@@ -655,20 +597,20 @@ class AgroGPSApp {
     this.selectArea(areaId)
   }
 
-  deleteAreaById(areaId, options = {}) {
-    if (!options.skipConfirmation && !confirm('¿Está seguro de que desea eliminar esta área y todos sus productos? Esta acción es irreversible.')) {
+  deleteAreaById(areaId) {
+    if (!confirm('¿Está seguro de que desea eliminar esta área y todos sus productos? Esta acción es irreversible.')) {
       return
     }
 
     const layerToDelete = this.drawnItems.getLayers().find(layer => layer.areaId === areaId)
 
     if (layerToDelete) {
-      // This will trigger L.Draw.Event.DELETED and call onAreaDeleted
-      this.drawnItems.removeLayer(layerToDelete)
+      // Simulate a delete event for this single layer
+      const event = { layers: new L.FeatureGroup([layerToDelete]) }
+      this.onAreaDeleted(event)
+      this.drawnItems.removeLayer(layerToDelete) // Also remove from map visually
     } else {
-      console.warn(`Layer with areaId ${areaId} not found on map, performing local/Firestore deletion directly.`);
-      // If layer not on map, still ensure local data and Firestore are updated
-      this._deleteAreaFromLocalAndFirestore(areaId);
+      console.warn(`Layer with areaId ${areaId} not found on map.`)
     }
   }
 
@@ -875,34 +817,21 @@ class AgroGPSApp {
   }
 
   updateAreaSelect() {
-    const areaSelect = document.getElementById("area-select")
-    areaSelect.innerHTML = '<option value="">Selecciona un área</option>'
+    const select = document.getElementById("area-select")
+    select.innerHTML = '<option value="">Selecciona un área</option>'
 
     this.areas.forEach((area) => {
       const option = document.createElement("option")
       option.value = area.id
       option.textContent = `${area.name} (${area.area.toFixed(2)} ha) ${area.owner ? '- ' + area.owner : ''}`
-      areaSelect.add(option)
+      select.appendChild(option)
     })
-    areaSelect.value = this.selectedArea ? this.selectedArea.id : ""
   }
 
-  toggleDeleteButton() {
-    const deleteButton = document.getElementById("delete-area-btn")
-    if (deleteButton) {
-      deleteButton.disabled = !this.selectedArea
-      if (this.selectedArea) {
-        deleteButton.classList.remove("opacity-50", "cursor-not-allowed")
-      } else {
-        deleteButton.classList.add("opacity-50", "cursor-not-allowed")
-      }
-    }
+  saveAreas() {
+    localStorage.setItem("agro-areas", JSON.stringify(this.areas))
+    localStorage.setItem("agro-products", JSON.stringify(this.products))
   }
-
-  // saveData() {
-  //   localStorage.setItem("agro-areas", JSON.stringify(this.areas))
-  //   localStorage.setItem("agro-products", JSON.stringify(this.products))
-  // }
 
   // Per-document Firestore operations (efficient — write only what changed)
   async saveAreaToFirestore(area) {
@@ -1040,61 +969,47 @@ class AgroGPSApp {
     if (!window.firebaseDB) return
     const db = window.firebaseDB
     const mod = await import('https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js')
-    const { collection, onSnapshot } = mod
+    const { collection, getDocs } = mod
+    // Read owners collection and merge all owners' areas/products into local arrays
+    const allAreas = []
+    const allProducts = []
 
-    const propietariosCol = collection(db, 'propietario');
-    onSnapshot(propietariosCol, (snapshot) => {
-      const owners = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      this.propietarios = owners;
-      console.log('Owners updated from Firestore.');
+    const propietariosCol = collection(db, 'propietario')
+    const propietariosSnap = await getDocs(propietariosCol)
 
-      this.allAreas = [];
-      this.allProducts = [];
+    for (const ownerDoc of propietariosSnap.docs) {
+      const ownerId = ownerDoc.id
+      // areas
+      try {
+  const areasSnap = await getDocs(collection(db, `propietario/${ownerId}/areas`))
+        for (const d of areasSnap.docs) {
+          const data = d.data()
+          if (data && typeof data.coordinates === 'string') {
+            try { data.coordinates = JSON.parse(data.coordinates) } catch (err) {}
+          }
+          allAreas.push(data)
+        }
+      } catch (err) {
+        // ignore per-owner errors
+      }
 
-      owners.forEach(owner => {
-        const ownerId = owner.id;
-        // Areas for each owner
-        onSnapshot(collection(db, `propietario/${ownerId}/areas`), (areaSnapshot) => {
-          let areas = areaSnapshot.docs.map(doc => {
-            const data = doc.data();
-            if (data && typeof data.coordinates === 'string') {
-              try { data.coordinates = JSON.parse(data.coordinates) } catch (err) {}
-            }
-            return { id: doc.id, ...data };
-          });
-          // Remove old areas for this owner and add new ones
-          this.allAreas = this.allAreas.filter(area => area.ownerId !== ownerId);
-          this.allAreas = [...this.allAreas, ...areas];
-          // Update the main areas array for the app
-          this.areas = [...this.allAreas];
-          console.log(`Areas for owner ${ownerId} updated.`);
-          this.loadAreas();
-          this.updateStats();
-          this.updateAreasList();
-          this.updateAreaSelect();
-        }, (error) => {
-          console.error(`Error listening to areas for owner ${ownerId}:`, error);
-        });
+      // products
+      try {
+  const prodsSnap = await getDocs(collection(db, `propietario/${ownerId}/products`))
+        for (const d of prodsSnap.docs) {
+          allProducts.push(d.data())
+        }
+      } catch (err) {
+        // ignore
+      }
+    }
 
-        // Products for each owner
-        onSnapshot(collection(db, `propietario/${ownerId}/products`), (productSnapshot) => {
-          let products = productSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-          // Remove old products for this owner and add new ones
-          this.allProducts = this.allProducts.filter(product => product.ownerId !== ownerId);
-          this.allProducts = [...this.allProducts, ...products];
-          // Update the main products array for the app
-          this.products = [...this.allProducts];
-          console.log(`Products for owner ${ownerId} updated.`);
-          this.updateAreasList(); // Products are displayed within areas list
-        }, (error) => {
-          console.error(`Error listening to products for owner ${ownerId}:`, error);
-        });
-      });
-
-    }, (error) => {
-      console.error('Error listening to owners:', error);
-    });
-
+    if (allAreas.length > 0 || allProducts.length > 0) {
+      this.areas = allAreas
+      this.products = allProducts
+      localStorage.setItem('agro-areas', JSON.stringify(this.areas))
+      localStorage.setItem('agro-products', JSON.stringify(this.products))
+    }
   }
 
   // Export areas and their products to a PDF document
@@ -1255,7 +1170,7 @@ class AgroGPSApp {
     }
 
     // Save data and update UI
-    // this.saveData()
+    this.saveAreas()
     await this.saveAreaToFirestore(areaToEdit).catch((e) => console.warn(e + ' (from editAreaDetails)'))
     this.updateStats()
     this.updateAreasList()
@@ -1364,14 +1279,8 @@ class AgroGPSApp {
     }
 
     this.products = this.products.filter(p => p.id !== productId)
-    // this.saveData()
-    
-    // Get the owner for Firestore deletion
-    const areaOfProduct = this.areas.find(area => area.id === productToDelete.areaId)
-    if (areaOfProduct && areaOfProduct.owner) {
-      await this.deleteProductFromFirestore(productId, areaOfProduct.owner).catch((e) => console.warn(e + ' (from deleteProductById)'))
-    }
-    
+    this.saveAreas()
+    await this.deleteProductFromFirestore(productId, productToDelete.owner).catch((e) => console.warn(e + ' (from deleteProductById)'))
     this.updateAreasList()
   }
 
@@ -1460,7 +1369,7 @@ class AgroGPSApp {
     productToEdit.updated = new Date().toISOString()
 
     // Save data and update UI
-    // this.saveData()
+    this.saveAreas()
     await this.saveProductToFirestore(productToEdit).catch((e) => console.warn(e + ' (from saveProductDetails)'))
     this.updateAreasList()
     // After saving, hide the form and show the display again
