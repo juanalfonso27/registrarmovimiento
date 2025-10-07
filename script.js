@@ -1359,9 +1359,17 @@ class AgroGPSApp {
   removeAreaFromMap(areaId) {
     const layerToRemove = this.drawnItems.getLayers().find(layer => layer.areaId === areaId)
     if (layerToRemove) {
-      // Call the internal Leaflet-Draw method to trigger the DELETED event
-      // This ensures onAreaDeleted is called and handles data removal
-      new L.Draw.Feature.Delete(this.map, { featureGroup: this.drawnItems }).removeLayer(layerToRemove)
+      // First, remove the data from our internal arrays and Firestore
+      this.removeArea(areaId)
+
+      // Then, remove the layer from the map
+      this.drawnItems.removeLayer(layerToRemove)
+
+      // Finally, update all UI elements that depend on the areas data
+      this.saveAreas()
+      this.updateAreasList()
+      this.updateAreaSelect()
+      this.updateStats()
     } else {
       console.warn(`Layer with ID ${areaId} not found on map for deletion.`)
     }
