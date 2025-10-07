@@ -313,7 +313,7 @@ class AgroGPSApp {
   }
 
   onAreaDeleted(e) {
-    e.layers.each((layer) => {
+    e.layers.eachLayer((layer) => {
       if (layer.areaId) {
         this.removeArea(layer.areaId)
       }
