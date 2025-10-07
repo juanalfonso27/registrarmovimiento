@@ -10,11 +10,38 @@ class AgroGPSApp {
     this.selectedArea = null
     this.userLocationMarker = null
     this.isLoading = true
+    this.firestoreModule = null // To store the dynamically imported Firestore module
 
     this.init()
   }
 
   async init() {
+    // Dynamically import Firestore module once
+    try {
+      this.firestoreModule = await import('https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js')
+      console.log('Firestore module loaded successfully.')
+    } catch (error) {
+      console.error('Failed to load Firestore module:', error)
+      // Handle the error, e.g., show a message to the user or disable Firestore features.
+    }
+
+    // Enable offline persistence (cache data locally)
+    if (window.firebaseDB && this.firestoreModule) {
+      try {
+        const { enableIndexedDbPersistence } = this.firestoreModule
+        await enableIndexedDbPersistence(window.firebaseDB)
+        console.log("Firestore offline persistence enabled")
+      } catch (err) {
+        if (err.code === 'failed-precondition') {
+          console.warn("Firestore offline persistence not enabled: Probably multiple tabs open.", err)
+        } else if (err.code === 'unimplemented') {
+          console.warn("Firestore offline persistence not available in this browser.", err)
+        } else {
+          console.error("Error enabling Firestore offline persistence:", err)
+        }
+      }
+    }
+
     this.initMap()
     this.initEventListeners()
     
@@ -897,10 +924,9 @@ class AgroGPSApp {
 
   // Per-document Firestore operations (efficient — write only what changed)
   async saveAreaToFirestore(area) {
-    if (!window.firebaseDB) return
+    if (!window.firebaseDB || !this.firestoreModule) return
     const db = window.firebaseDB
-    const mod = await import('https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js')
-    const { doc, setDoc } = mod
+    const { doc, setDoc } = this.firestoreModule
     try {
       const ownerPath = encodeURIComponent(area.owner)
   // Ensure owner doc exists (so collection('propietario') will list it)
@@ -916,10 +942,9 @@ class AgroGPSApp {
   }
 
   async deleteAreaFromFirestore(areaId, owner) {
-    if (!window.firebaseDB || !owner) return
+    if (!window.firebaseDB || !owner || !this.firestoreModule) return
     const db = window.firebaseDB
-    const mod = await import('https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js')
-    const { doc, deleteDoc } = mod
+    const { doc, deleteDoc } = this.firestoreModule
     try {
       const ownerPath = encodeURIComponent(owner)
   await deleteDoc(doc(db, `propietario/${ownerPath}/areas/${areaId}`))
@@ -929,14 +954,13 @@ class AgroGPSApp {
   }
 
   async saveProductToFirestore(product) {
-    if (!window.firebaseDB) return
+    if (!window.firebaseDB || !this.firestoreModule) return
     // Determine owner from product.areaId
     const area = this.areas.find((a) => a.id === product.areaId)
     if (!area || !area.owner) return
     const ownerPath = encodeURIComponent(area.owner)
     const db = window.firebaseDB
-    const mod = await import('https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js')
-    const { doc, setDoc } = mod
+    const { doc, setDoc } = this.firestoreModule
     try {
       // Ensure owner doc exists
   const ownerRef = doc(db, `propietario/${ownerPath}`)
@@ -950,10 +974,9 @@ class AgroGPSApp {
   }
 
   async deleteProductFromFirestore(productId, owner) {
-    if (!window.firebaseDB || !owner) return
+    if (!window.firebaseDB || !owner || !this.firestoreModule) return
     const db = window.firebaseDB
-    const mod = await import('https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js')
-    const { doc, deleteDoc } = mod
+    const { doc, deleteDoc } = this.firestoreModule
     try {
       const ownerPath = encodeURIComponent(owner)
   await deleteDoc(doc(db, `propietario/${ownerPath}/products/${productId}`))
@@ -964,10 +987,9 @@ class AgroGPSApp {
 
   // Save current areas/products to Firestore. Uses dynamic imports so script.js stays non-module.
   async saveToFirestore() {
-    if (!window.firebaseDB) return
+    if (!window.firebaseDB || !this.firestoreModule) return
     const db = window.firebaseDB
-    const mod = await import('https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js')
-    const { doc, setDoc, collection, getDocs, deleteDoc } = mod
+    const { doc, setDoc, collection, getDocs, deleteDoc } = this.firestoreModule
   // Group areas and products by owner and write under propietario/{owner}/areas and propietario/{owner}/products
     const owners = {}
     for (const a of this.areas) {
@@ -1028,10 +1050,9 @@ class AgroGPSApp {
 
   // Load data from Firestore if any exists; otherwise keep localStorage data
   async syncFromFirestore() {
-    if (!window.firebaseDB) return
+    if (!window.firebaseDB || !this.firestoreModule) return
     const db = window.firebaseDB
-    const mod = await import('https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js')
-    const { collection, getDocs } = mod
+    const { collection, getDocs } = this.firestoreModule
     // Read owners collection and merge all owners' areas/products into local arrays
     const allAreas = []
     const allProducts = []
@@ -1039,32 +1060,44 @@ class AgroGPSApp {
     const propietariosCol = collection(db, 'propietario')
     const propietariosSnap = await getDocs(propietariosCol)
 
-    for (const ownerDoc of propietariosSnap.docs) {
+    const ownerPromises = propietariosSnap.docs.map(async (ownerDoc) => {
       const ownerId = ownerDoc.id
-      // areas
-      try {
-  const areasSnap = await getDocs(collection(db, `propietario/${ownerId}/areas`))
-        for (const d of areasSnap.docs) {
+      const areaPromise = getDocs(collection(db, `propietario/${ownerId}/areas`))
+      const productsPromise = getDocs(collection(db, `propietario/${ownerId}/products`))
+      
+      const [areasSnap, prodsSnap] = await Promise.allSettled([areaPromise, productsPromise])
+
+      const areasForOwner = []
+      if (areasSnap.status === 'fulfilled') {
+        for (const d of areasSnap.value.docs) {
           const data = d.data()
           if (data && typeof data.coordinates === 'string') {
             try { data.coordinates = JSON.parse(data.coordinates) } catch (err) {}
           }
-          allAreas.push(data)
+          areasForOwner.push(data)
         }
-      } catch (err) {
-        // ignore per-owner errors
+      } else {
+        console.warn(`Error fetching areas for owner ${ownerId}:`, areasSnap.reason)
       }
 
-      // products
-      try {
-  const prodsSnap = await getDocs(collection(db, `propietario/${ownerId}/products`))
-        for (const d of prodsSnap.docs) {
-          allProducts.push(d.data())
+      const productsForOwner = []
+      if (prodsSnap.status === 'fulfilled') {
+        for (const d of prodsSnap.value.docs) {
+          productsForOwner.push(d.data())
         }
-      } catch (err) {
-        // ignore
+      } else {
+        console.warn(`Error fetching products for owner ${ownerId}:`, prodsSnap.reason)
       }
-    }
+
+      return { areas: areasForOwner, products: productsForOwner }
+    })
+
+    const results = await Promise.all(ownerPromises)
+
+    results.forEach(result => {
+      allAreas.push(...result.areas)
+      allProducts.push(...result.products)
+    })
 
     if (allAreas.length > 0 || allProducts.length > 0) {
       this.areas = allAreas
