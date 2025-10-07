@@ -268,15 +268,34 @@ class AgroGPSApp {
       return
     }
 
-    const removed = this.areas.find((area) => area.id === areaId)
+    const removedArea = this.areas.find((area) => area.id === areaId)
+    if (!removedArea) {
+      console.warn(`Area with ID ${areaId} not found in local data for deletion.`)
+      return
+    }
+
+    // Get the owner before modifying this.areas
+    const owner = removedArea.owner
+
     this.areas = this.areas.filter((area) => area.id !== areaId)
 
     const relatedProducts = this.products.filter((product) => product.areaId === areaId)
     this.products = this.products.filter((product) => product.areaId !== areaId)
 
-    if (removed && removed.owner) this.deleteAreaFromFirestore(removed.id, removed.owner).catch((e) => console.warn(e))
+    // Delete area from Firestore
+    if (owner) { // Ensure owner is valid before attempting Firestore delete
+      this.deleteAreaFromFirestore(removedArea.id, owner).catch((e) => console.warn(e))
+    } else {
+      console.warn(`Owner not found for area ${areaId}, skipping Firestore area deletion.`)
+    }
+    
+    // Delete related products from Firestore
     for (const rp of relatedProducts) {
-      this.deleteProductFromFirestore(rp.id, removed ? removed.owner : '').catch((e) => console.warn(e))
+      if (owner) { // Ensure owner is valid for each product deletion
+        this.deleteProductFromFirestore(rp.id, owner).catch((e) => console.warn(e))
+      } else {
+        console.warn(`Owner not found for product ${rp.id}, skipping Firestore product deletion.`)
+      }
     }
   }
 
