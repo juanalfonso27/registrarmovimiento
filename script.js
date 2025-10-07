@@ -29,6 +29,9 @@ class AgroGPSApp {
     if (window.firebaseDB && this.firestoreModule) {
       try {
         const { enableIndexedDbPersistence } = this.firestoreModule
+        // Recommended way to configure cache in future versions:
+        // const { setFirestoreSettings } = this.firestoreModule;
+        // setFirestoreSettings(window.firebaseDB, { cache: new IndexedDbCache({}) });
         await enableIndexedDbPersistence(window.firebaseDB)
         console.log("Firestore offline persistence enabled")
       } catch (err) {
