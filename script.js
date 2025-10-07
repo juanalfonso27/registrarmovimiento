@@ -18,39 +18,7 @@ class AgroGPSApp {
     this.initMap()
     this.initEventListeners()
     
-    // Set a maximum loading time to prevent UI from being blocked indefinitely
-    const loadingTimeout = setTimeout(() => {
-      this.hideLoadingOverlay()
-    }, 15000) // 15 seconds maximum loading time
-    
-    try {
-      // Initialize drawn items layer BEFORE loading areas
-      this.drawnItems = new L.FeatureGroup()
-      this.map.addLayer(this.drawnItems)
-      
-      // Try to sync from Firestore (if available). This will replace local data if remote data exists.
-      await this.syncFromFirestore()
-      
-      // Process and display the data only after it's loaded
-      this.loadAreas()
-      this.updateStats()
-      this.updateAreasList()
-      this.updateAreaSelect()
-      
-      // Hide loading overlay only after all data is processed and UI is updated
-      clearTimeout(loadingTimeout)
-      this.hideLoadingOverlay()
-    } catch (err) {
-      console.warn('No se pudo sincronizar con Firestore en init:', err && err.message)
-      // Even on error, we should still try to load any local data
-      this.loadAreas()
-      this.updateStats()
-      this.updateAreasList()
-      this.updateAreaSelect()
-      
-      clearTimeout(loadingTimeout)
-      this.hideLoadingOverlay()
-    }
+    await this.loadAndSyncData()
 
     // Initialize draw control
     const drawControl = new L.Control.Draw({
@@ -92,6 +60,26 @@ class AgroGPSApp {
     this.map.on(L.Draw.Event.CREATED, (e) => this.onAreaCreated(e))
     this.map.on(L.Draw.Event.DELETED, (e) => this.onAreaDeleted(e))
     this.map.on(L.Draw.Event.EDITED, (e) => this.onAreaEdited(e))
+  }
+
+  async loadAndSyncData() {
+    // Initialize drawn items layer BEFORE loading areas
+    this.drawnItems = new L.FeatureGroup()
+    this.map.addLayer(this.drawnItems)
+
+    try {
+      // Try to sync from Firestore (if available). This will replace local data if remote data exists.
+      await this.syncFromFirestore()
+    } catch (err) {
+      console.warn('No se pudo sincronizar con Firestore en init (o inicializar Firebase):', err && err.message)
+    } finally {
+      // Process and display the data only after it's loaded (from Firestore or local storage)
+      this.loadAreas()
+      this.updateStats()
+      this.updateAreasList()
+      this.updateAreaSelect()
+      this.hideLoadingOverlay()
+    }
   }
 
   initMap() {
@@ -186,15 +174,17 @@ class AgroGPSApp {
         this.loadAreas()
       } catch (err) {
         console.warn('Error syncing after firebase-ready:', err && err.message)
+      } finally {
+        // Ensure loading overlay is hidden even if firebase-ready is triggered late
+        this.hideLoadingOverlay()
       }
     })
   }
 
   // Hide the loading overlay when data is loaded
   hideLoadingOverlay() {
-    if (!this.isLoading) return // Prevent multiple calls
-    
-    this.isLoading = false
+    // No need for `this.isLoading` check here as `loadAndSyncData` will always call it last.
+    // If firebase-ready is delayed, it will ensure it's hidden.
     const overlay = document.getElementById('loading-overlay')
     if (overlay) {
       // Add fade-out animation
