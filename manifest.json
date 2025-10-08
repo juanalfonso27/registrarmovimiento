@@ -2,7 +2,7 @@
   "name": "AgroGestor",
   "short_name": "AgroGestor",
   "description": "Una aplicación para registrar y gestionar campos.",
-  "start_url": "/index.html",
+  "start_url": "https://registrarmovimiento.vercel.app/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#000000",
@@ -13,8 +13,13 @@
       "type": "image/png"
     },
     {
-      "src": "icons/icon-512x512.png",
+      "src": "logo.png",
       "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "logo.png",
+      "sizes": "192x192",
       "type": "image/png"
     }
   ]
