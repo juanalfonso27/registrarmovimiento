@@ -1052,7 +1052,7 @@ class AgroGPSApp {
   async syncFromFirestore() {
     if (!window.firebaseDB || !this.firestoreModule) return
     
-    this.showLoadingOverlay('Cargando datos desde Firebase...')
+    this.showLoadingOverlay('Cargando datos...')
     
     const db = window.firebaseDB
     const { collection, getDocs } = this.firestoreModule
