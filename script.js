@@ -78,6 +78,9 @@ class AgroGPSApp {
     this.drawnItems = new L.FeatureGroup()
     this.map.addLayer(this.drawnItems)
 
+    // Show loading overlay
+    this.showLoadingOverlay('Sincronizando datos con Firebase...')
+
     try {
       // Try to sync from Firestore (if available). This will replace local data if remote data exists.
       await this.syncFromFirestore()
@@ -177,6 +180,7 @@ class AgroGPSApp {
 
     // If Firebase initializes after the app, listen for it and sync
     window.addEventListener('firebase-ready', async () => {
+      this.showLoadingOverlay('Sincronizando con Firebase...')
       try {
         await this.syncFromFirestore()
         this.updateStats()
@@ -192,13 +196,25 @@ class AgroGPSApp {
     })
   }
 
+  // Show the loading overlay with a custom message
+  showLoadingOverlay(message = 'Cargando...') {
+    const overlay = document.getElementById('loading-overlay')
+    const messageElement = document.getElementById('loading-message')
+    if (overlay) {
+      overlay.classList.remove('hidden', 'opacity-0')
+      overlay.classList.add('opacity-100')
+      if (messageElement) {
+        messageElement.textContent = message
+      }
+    }
+  }
+
   // Hide the loading overlay when data is loaded
   hideLoadingOverlay() {
-    // No need for `this.isLoading` check here as `loadAndSyncData` will always call it last.
-    // If firebase-ready is delayed, it will ensure it's hidden.
     const overlay = document.getElementById('loading-overlay')
     if (overlay) {
       // Add fade-out animation
+      overlay.classList.remove('opacity-100')
       overlay.classList.add('opacity-0')
       // Remove from DOM after animation completes
       setTimeout(() => {
@@ -1035,6 +1051,9 @@ class AgroGPSApp {
   // Load data from Firestore if any exists; otherwise keep localStorage data
   async syncFromFirestore() {
     if (!window.firebaseDB || !this.firestoreModule) return
+    
+    this.showLoadingOverlay('Cargando datos desde Firebase...')
+    
     const db = window.firebaseDB
     const { collection, getDocs } = this.firestoreModule
     // Read owners collection and merge all owners' areas/products into local arrays
@@ -1344,6 +1363,9 @@ class AgroGPSApp {
         }
     })
   }
+
+  // New method to delete a product by its ID
+ 
 
   // New method to delete a product by its ID
   async deleteProductById(productId) {
