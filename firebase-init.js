@@ -3,7 +3,7 @@
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js'
 import { getAnalytics } from 'https://www.gstatic.com/firebasejs/9.22.2/firebase-analytics.js'
-import { getFirestore } from 'https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js'
+import { getFirestore, enablePersistence } from 'https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js'
 import { getAuth } from 'https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js'
 import { getStorage } from 'https://www.gstatic.com/firebasejs/9.22.2/firebase-storage.js'
 
@@ -31,7 +31,7 @@ try {
 // Inicializa otros SDKs
 const db = getFirestore(firebaseApp)
 // Habilita la persistencia offline
-db.enableOfflinePersistence()
+enablePersistence(db)
   .then(() => console.log('Firestore offline persistence enabled'))
   .catch((err) => console.warn('Error enabling offline persistence:', err))
 const auth = getAuth(firebaseApp)
