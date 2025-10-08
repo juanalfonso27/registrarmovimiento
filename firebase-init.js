@@ -1,11 +1,11 @@
 // Inicializa Firebase en el navegador usando módulos CDN (no requiere bundler)
 // Exporta referencias útiles en window para que el resto de la app las use.
 
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.0.0/firebase-app.js'
-import { getAnalytics } from 'https://www.gstatic.com/firebasejs/10.0.0/firebase-analytics.js'
-import { getFirestore, enablePersistence } from 'https://www.gstatic.com/firebasejs/10.0.0/firebase-firestore.js'
-import { getAuth } from 'https://www.gstatic.com/firebasejs/10.0.0/firebase-auth.js'
-import { getStorage } from 'https://www.gstatic.com/firebasejs/10.0.0/firebase-storage.js'
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js'
+import { getAnalytics } from 'https://www.gstatic.com/firebasejs/9.22.2/firebase-analytics.js'
+import { getFirestore } from 'https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js'
+import { getAuth } from 'https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js'
+import { getStorage } from 'https://www.gstatic.com/firebasejs/9.22.2/firebase-storage.js'
 
 // Configuración proporcionada
 const firebaseConfig = {
@@ -30,10 +30,14 @@ try {
 
 // Inicializa otros SDKs
 const db = getFirestore(firebaseApp)
-// Habilita la persistencia offline
 enablePersistence(db)
-  .then(() => console.log('Firestore offline persistence enabled'))
-  .catch((err) => console.warn('Error enabling offline persistence:', err))
+  .catch(err => {
+    if (err.code === 'failed-precondition') {
+      console.warn('Multiple tabs open, persistence could not be enabled.')
+    } else if (err.code === 'unimplemented') {
+      console.warn('The current browser does not support persistence.')
+    }
+  })
 const auth = getAuth(firebaseApp)
 const storage = getStorage(firebaseApp)
 
@@ -48,7 +52,7 @@ console.log('Firebase inicializado', { app: firebaseApp, analytics })
 
 // Ejemplo: función simple para escribir una colección de prueba
 export async function saveTestDoc() {
-  const { doc, setDoc, collection } = await import('https://www.gstatic.com/firebasejs/10.0.0/firebase-firestore.js')
+  const { doc, setDoc, collection } = await import('https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js')
   try {
     const ref = doc(collection(db, 'test-areas'), Math.random().toString(36).slice(2, 9))
     await setDoc(ref, { created: new Date().toISOString(), note: 'prueba desde firebase-init' })
