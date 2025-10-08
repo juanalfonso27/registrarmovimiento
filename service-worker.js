@@ -6,7 +6,6 @@ const urlsToCache = [
   '/script.js',
   '/firebase-init.js',
   '/manifest.json',
-  '/logo.png',
   '/logo.png'
 ];
 
