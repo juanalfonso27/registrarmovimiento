@@ -1,15 +1,15 @@
 {
-  "name": "Registro de Movimientos",
-  "short_name": "Movimientos",
-  "description": "Una aplicación para registrar movimientos de dinero.",
+  "name": "AgroGestor",
+  "short_name": "AgroGestor",
+  "description": "Una aplicación para registrar y gestionar campos.",
   "start_url": "/index.html",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#000000",
   "icons": [
     {
-      "src": "icons/icon-192x192.png",
-      "sizes": "192x192",
+      "src": "logo.png",
+      "sizes": "1024x1024",
       "type": "image/png"
     },
     {
