@@ -5,8 +5,14 @@ const urlsToCache = [
   '/styles.css',
   '/script.js',
   '/firebase-init.js',
+<<<<<<< HEAD
   '/logo.png',
   '/manifest.json'
+=======
+  '/manifest.json',
+  '/logo.png',
+  '/logo.png'
+>>>>>>> parent of 2b80362 (Update service-worker.js)
 ];
 
 self.addEventListener('install', (event) => {
