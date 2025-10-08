@@ -25,25 +25,7 @@ class AgroGPSApp {
       // Handle the error, e.g., show a message to the user or disable Firestore features.
     }
 
-    // Enable offline persistence (cache data locally)
-    if (window.firebaseDB && this.firestoreModule) {
-      try {
-        const { enableIndexedDbPersistence, setFirestoreSettings, IndexedDbCache } = this.firestoreModule
-        // Recommended way to configure cache:
-        setFirestoreSettings(window.firebaseDB, { cache: new IndexedDbCache({}) });
-        // The old way (deprecated): await enableIndexedDbPersistence(window.firebaseDB)
-        console.log("Firestore offline persistence enabled")
-      } catch (err) {
-        if (err.code === 'failed-precondition') {
-          console.warn("Firestore offline persistence not enabled: Probably multiple tabs open.", err)
-        } else if (err.code === 'unimplemented') {
-          console.warn("Firestore offline persistence not available in this browser.", err)
-        } else {
-          console.error("Error enabling Firestore offline persistence:", err)
-        }
-      }
-    }
-
+  
     this.initMap()
     this.initEventListeners()
     
