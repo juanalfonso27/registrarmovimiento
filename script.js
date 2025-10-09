@@ -144,30 +144,50 @@ class AgroGPSApp {
     })
 
     let deferredInstallPrompt = null
+    const installBanner = document.getElementById('install-banner')
+    const installBtn = document.getElementById('install-app-btn')
+    const closeInstallBannerBtn = document.getElementById('close-install-banner')
 
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault()
       deferredInstallPrompt = e
-      const installBtn = document.getElementById('install-app-btn')
-      if (installBtn) {
-        installBtn.classList.remove('hidden')
-        deferredInstallPrompt.prompt()
-        deferredInstallPrompt.userChoice.then((choiceResult) => {
-          if (choiceResult.outcome === 'accepted') {
-            console.log('User accepted the install prompt')
-          } else {
-            console.log('User dismissed the install prompt')
-          }
-          deferredInstallPrompt = null
-          installBtn.classList.add('hidden')
-        })
+      // Show the install banner
+      if (installBanner) {
+        installBanner.classList.remove('hidden')
       }
     })
 
+    if (installBtn) {
+      installBtn.addEventListener('click', () => {
+        if (deferredInstallPrompt) {
+          deferredInstallPrompt.prompt()
+          deferredInstallPrompt.userChoice.then((choiceResult) => {
+            if (choiceResult.outcome === 'accepted') {
+              console.log('User accepted the install prompt')
+            } else {
+              console.log('User dismissed the install prompt')
+            }
+            deferredInstallPrompt = null
+            // Hide the banner after the prompt is shown/dismissed
+            if (installBanner) {
+              installBanner.classList.add('hidden')
+            }
+          })
+        }
+      })
+    }
+
+    if (closeInstallBannerBtn) {
+      closeInstallBannerBtn.addEventListener('click', () => {
+        if (installBanner) {
+          installBanner.classList.add('hidden')
+        }
+      })
+    }
+
     window.addEventListener('appinstalled', () => {
-      const installBtn = document.getElementById('install-app-btn')
-      if (installBtn) {
-        installBtn.classList.add('hidden')
+      if (installBanner) {
+        installBanner.classList.add('hidden')
       }
       console.log('PWA was installed')
     })

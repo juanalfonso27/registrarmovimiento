@@ -15,6 +15,19 @@
     <link rel="manifest" href="/manifest.json">
 </head>
 <body class="bg-gradient-to-br from-green-50 to-amber-50 min-h-screen">
+    <!-- Install App Banner -->
+    <div id="install-banner" class="fixed top-0 left-0 right-0 bg-green-700 text-white p-3 flex items-center justify-between z-[9998] hidden">
+        <p class="text-sm">¿Te gustaría instalar AgroGestor para un acceso rápido?</p>
+        <div class="space-x-2">
+            <button id="install-app-btn" class="bg-white text-green-700 px-3 py-1 rounded-md text-sm font-semibold hover:bg-gray-100">
+                Instalar
+            </button>
+            <button id="close-install-banner" class="text-white hover:text-gray-100 px-3 py-1 rounded-md text-sm">
+                No, gracias
+            </button>
+        </div>
+    </div>
+
     <!-- Loading Overlay -->
     <div id="loading-overlay" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-[9999] transition-opacity duration-500 hidden opacity-0">
         <div class="bg-white p-6 rounded-lg shadow-xl flex flex-col items-center">
@@ -79,7 +92,7 @@
             </div>
 
             <div class="space-y-6">
-                <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+                <div class="bg-white rounded-xl shadow-lg">
                     <div class="p-4 bg-gradient-to-r from-amber-500 to-orange-500">
                         <h3 class="text-lg font-bold text-white">Registrar Producto</h3>
                     </div>
@@ -159,8 +172,6 @@
                         <div class="flex space-x-2">
                             <button id="export-pdf-btn" class="bg-white/10 hover:bg-white/20 text-white px-3 py-1 rounded-md text-sm">Generar PDF</button>
                             <button id="areas-fullscreen-btn" class="bg-white/10 hover:bg-white/20 text-white px-3 py-1 rounded-md text-sm">Pantalla completa</button>
-                            <!-- Nuevo botón para generar datos de prueba -->
-                            <button id="install-app-btn" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-md text-sm hidden">Instalar App</button>
                         </div>
                     </div>
                     <!-- Search box to filter registered areas -->
