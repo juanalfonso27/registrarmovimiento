@@ -128,8 +128,5 @@
   }
 
   /* also allow the products container to scroll if content is large */
-  #products-container {
-    /* overflow-y: auto; */
-    /* max-height: calc(100vh - 480px); */
+  
   }
-}
