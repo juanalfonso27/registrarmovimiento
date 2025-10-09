@@ -143,6 +143,39 @@ class AgroGPSApp {
       this.addProductLine()
     })
 
+    let deferredInstallPrompt = null
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault()
+      deferredInstallPrompt = e
+      const installBtn = document.getElementById('install-app-btn')
+      if (installBtn) {
+        installBtn.classList.remove('hidden')
+        installBtn.addEventListener('click', () => {
+          if (deferredInstallPrompt) {
+            deferredInstallPrompt.prompt()
+            deferredInstallPrompt.userChoice.then((choiceResult) => {
+              if (choiceResult.outcome === 'accepted') {
+                console.log('User accepted the install prompt')
+              } else {
+                console.log('User dismissed the install prompt')
+              }
+              deferredInstallPrompt = null
+              installBtn.classList.add('hidden')
+            })
+          }
+        })
+      }
+    })
+
+    window.addEventListener('appinstalled', () => {
+      const installBtn = document.getElementById('install-app-btn')
+      if (installBtn) {
+        installBtn.classList.add('hidden')
+      }
+      console.log('PWA was installed')
+    })
+
     // Fullscreen toggle for map
     const fsBtn = document.getElementById('fullscreen-btn')
     if (fsBtn) {
