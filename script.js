@@ -151,20 +151,15 @@ class AgroGPSApp {
       const installBtn = document.getElementById('install-app-btn')
       if (installBtn) {
         installBtn.classList.remove('hidden')
-        alert('¡Esta aplicación puede instalarse en tu dispositivo!') // Add this line
-        installBtn.addEventListener('click', () => {
-          if (deferredInstallPrompt) {
-            deferredInstallPrompt.prompt()
-            deferredInstallPrompt.userChoice.then((choiceResult) => {
-              if (choiceResult.outcome === 'accepted') {
-                console.log('User accepted the install prompt')
-              } else {
-                console.log('User dismissed the install prompt')
-              }
-              deferredInstallPrompt = null
-              installBtn.classList.add('hidden')
-            })
+        deferredInstallPrompt.prompt()
+        deferredInstallPrompt.userChoice.then((choiceResult) => {
+          if (choiceResult.outcome === 'accepted') {
+            console.log('User accepted the install prompt')
+          } else {
+            console.log('User dismissed the install prompt')
           }
+          deferredInstallPrompt = null
+          installBtn.classList.add('hidden')
         })
       }
     })
