@@ -3,22 +3,173 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login</title>
-    <link rel="stylesheet" href="auth.css">
+    <title>AgroGestor - Iniciar Sesión</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #1e9e5e 0%, #148f50 50%, #0f7d44 100%);
+            padding: 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 420px;
+        }
+
+        .form-box {
+            background: white;
+            border-radius: 16px;
+            padding: 40px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        }
+
+        .logo-section {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .logo-icon {
+            width: 70px;
+            height: 70px;
+            background: #1e9e5e;
+            border-radius: 16px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 15px;
+        }
+
+        .logo-icon i {
+            font-size: 36px;
+            color: white;
+        }
+
+        h2 {
+            color: #1e9e5e;
+            font-size: 28px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .subtitle {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 30px;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        .input-field {
+            position: relative;
+            margin-bottom: 20px;
+        }
+
+
+
+        .input-field input {
+            width: 100%;
+            padding: 14px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 15px;
+            transition: all 0.3s ease;
+            outline: none;
+        }
+
+        .input-field input:focus {
+            border-color: #1e9e5e;
+            box-shadow: 0 0 0 3px rgba(30, 158, 94, 0.1);
+        }
+
+        .input-field input::placeholder {
+            color: #999;
+        }
+
+        .btn-field {
+            margin-top: 30px;
+        }
+
+        #loginBtn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #1e9e5e, #148f50);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(30, 158, 94, 0.3);
+        }
+
+        #loginBtn:hover {
+            background: linear-gradient(135deg, #148f50, #0f7d44);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(30, 158, 94, 0.4);
+        }
+
+        #loginBtn:active {
+            transform: translateY(0);
+        }
+
+        .extra-options {
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .extra-options a {
+            color: #1e9e5e;
+            text-decoration: none;
+            font-size: 14px;
+            transition: color 0.3s ease;
+        }
+
+        .extra-options a:hover {
+            color: #148f50;
+            text-decoration: underline;
+        }
+
+        @media (max-width: 480px) {
+            .form-box {
+                padding: 30px 20px;
+            }
+
+            h2 {
+                font-size: 24px;
+            }
+        }
+    </style>
 </head>
 <body>
     <div class="container">
         <div class="form-box">
-            <h2>Iniciar Sesión</h2>
+            <div class="logo-section">
+                <div class="logo-icon">
+                    <i class="fas fa-map-marked-alt"></i>
+                </div>
+                <h2>AgroGestor</h2>
+                <p class="subtitle">Gestión Inteligente de Campos</p>
+            </div>
             <form id="loginForm">
                 <div class="input-group">
                     <div class="input-field">
-                        <i class="fas fa-user"></i>
                         <input type="text" id="username" placeholder="Nombre de usuario" required>
                     </div>
                     <div class="input-field">
-                        <i class="fas fa-lock"></i>
                         <input type="password" id="password" placeholder="Contraseña" required>
                     </div>
                 </div>
