@@ -984,9 +984,25 @@ class AgroGPSApp {
 
   const ref = doc(db, `propietario/${ownerPath}/areas/${area.id}`)
       const payload = Object.assign({}, area, { coordinates: JSON.stringify(area.coordinates) })
-      await setDoc(ref, payload)
+      // Debug: log path and payload (avoid logging huge coordinate arrays in prod)
+      console.log('Saving area to Firestore at', ref.path || '(no path)', 'payload preview:', {
+        id: payload.id,
+        name: payload.name,
+        owner: payload.owner,
+        area: payload.area,
+        coordsLength: Array.isArray(area.coordinates) ? area.coordinates.length : 0,
+      })
+
+      try {
+        await setDoc(ref, payload)
+      } catch (innerErr) {
+        // Print full error for easier debugging (includes code and details)
+        console.error('Firestore setDoc failed for area:', innerErr)
+        throw innerErr
+      }
     } catch (err) {
       console.warn('saveAreaToFirestore error:', err && err.message)
+      console.error(err)
     }
   }
 
@@ -1016,9 +1032,22 @@ class AgroGPSApp {
       await setDoc(ownerRef, { owner: area.owner, updated: new Date().toISOString() }, { merge: true })
 
   const ref = doc(db, `propietario/${ownerPath}/products/${product.id}`)
-      await setDoc(ref, product)
+      console.log('Saving product to Firestore at', ref.path || '(no path)', 'product preview:', {
+        id: product.id,
+        name: product.name,
+        areaId: product.areaId,
+        quantity: product.quantity,
+      })
+
+      try {
+        await setDoc(ref, product)
+      } catch (innerErr) {
+        console.error('Firestore setDoc failed for product:', innerErr)
+        throw innerErr
+      }
     } catch (err) {
       console.warn('saveProductToFirestore error:', err && err.message)
+      console.error(err)
     }
   }
 
@@ -1062,7 +1091,12 @@ class AgroGPSApp {
       for (const a of ownerAreas) {
         const ref = doc(db, `${basePath}/areas/${a.id}`)
         const payload = Object.assign({}, a, { coordinates: JSON.stringify(a.coordinates) })
-        await setDoc(ref, payload)
+        console.log('Batch save area ->', ref.path, payload.id, payload.name)
+        try {
+          await setDoc(ref, payload)
+        } catch (innerErr) {
+          console.error('Error saving area in batch for', ref.path, innerErr)
+        }
       }
 
       // Cleanup remote areas for this owner
@@ -1080,7 +1114,12 @@ class AgroGPSApp {
       // Products
       for (const p of ownerProducts) {
         const ref = doc(db, `${basePath}/products/${p.id}`)
-        await setDoc(ref, p)
+        console.log('Batch save product ->', ref.path, p.id, p.name)
+        try {
+          await setDoc(ref, p)
+        } catch (innerErr) {
+          console.error('Error saving product in batch for', ref.path, innerErr)
+        }
       }
 
       // Cleanup remote products for this owner
