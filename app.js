@@ -1,6 +1,6 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js';
 import { getAuth, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js';
-import { getFirestore, collection, query, where, getDocs, addDoc } from 'https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js';
+import { getFirestore, collection, query, where, getDocs, addDoc, enableIndexedDbPersistence } from 'https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js';
 
 // Configuración de Firebase
 const firebaseConfig = {
@@ -18,12 +18,35 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
+// Habilitar persistencia offline
+try {
+    enableIndexedDbPersistence(db).catch((err) => {
+        if (err.code == 'failed-precondition') {
+            console.warn('La persistencia falló, múltiples pestañas abiertas');
+        } else if (err.code == 'unimplemented') {
+            console.warn('El navegador no soporta persistencia');
+        }
+    });
+} catch (error) {
+    console.warn('Error al configurar persistencia:', error);
+}
+
+// Manejador global de errores
+window.addEventListener('unhandledrejection', function(event) {
+    console.error('Error no manejado:', event.reason);
+    if (event.reason.code === 'permission-denied') {
+        alert('Error de permisos: Por favor, vuelve a iniciar sesión');
+        signOut(auth);
+    }
+});
+
 // Verificar si el usuario está autenticado
 onAuthStateChanged(auth, (user) => {
     if (!user) {
         // Si no hay usuario autenticado, redirigir al login
         window.location.href = 'index.html';
     } else {
+        console.log('Usuario autenticado:', user.uid);
         // Cargar los datos del usuario
         loadUserData(user.uid);
     }
@@ -74,28 +97,46 @@ async function loadUserData(userId) {
 // Función para agregar un nuevo movimiento
 async function addMovement(description, amount) {
     try {
+        // Verificar autenticación
         const user = auth.currentUser;
         if (!user) {
-            console.error('No hay usuario autenticado');
-            alert('Debes iniciar sesión para agregar movimientos');
+            const error = 'No hay usuario autenticado';
+            console.error(error);
+            alert(error);
             return;
         }
 
+        // Validar datos
+        if (!description || !amount) {
+            const error = 'La descripción y el monto son obligatorios';
+            console.error(error);
+            alert(error);
+            return;
+        }
+
+        // Crear objeto de movimiento
         const movementData = {
             userId: user.uid,
-            description,
+            description: description.trim(),
             amount: parseFloat(amount),
             date: new Date().toISOString(),
-            createdAt: new Date().toISOString()
+            createdAt: new Date().toISOString(),
+            type: 'movement' // Tipo de documento para queries
         };
 
-        // Verificación adicional antes de guardar
+        // Verificaciones adicionales
         if (!movementData.userId) {
-            console.error('Error: userId no válido');
-            return;
+            throw new Error('userId no válido');
         }
 
-        await addDoc(collection(db, 'movements'), movementData);
+        console.log('Intentando guardar movimiento:', movementData);
+
+        // Guardar en Firestore
+        const docRef = await addDoc(collection(db, 'movements'), movementData);
+        console.log('Movimiento guardado con ID:', docRef.id);
+
+        // Actualizar la vista
+        loadUserData(user.uid);
 
         // Recargar los datos
         loadUserData(user.uid);
