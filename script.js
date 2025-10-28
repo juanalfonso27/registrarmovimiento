@@ -1167,62 +1167,57 @@ class AgroGPSApp {
   // Load data from Firestore if any exists; otherwise keep localStorage data
   async syncFromFirestore() {
     if (!window.firebaseDB || !this.firestoreModule) return
-    
-    this.showLoadingOverlay('Cargando datos...')
-    
+
+    // If there's no authenticated user, DO NOT fetch all owners' data.
+    // Only sync the currently-authenticated user's subcollections (propietario/{uid}/areas and products).
+    const auth = window.firebaseAuth
+    const currentUser = auth && auth.currentUser ? auth.currentUser : null
+
+    if (!currentUser) {
+      // Avoid reading the root 'propietario' collection which contains all users' data.
+      console.warn('No hay usuario autenticado: se omite la sincronización desde Firestore para evitar exponer datos de otros usuarios. Usando datos locales.')
+      return
+    }
+
+    this.showLoadingOverlay('Cargando datos de su cuenta...')
+
     const db = window.firebaseDB
     const { collection, getDocs } = this.firestoreModule
-    // Read owners collection and merge all owners' areas/products into local arrays
-    const allAreas = []
-    const allProducts = []
 
-    const propietariosCol = collection(db, 'propietario')
-    const propietariosSnap = await getDocs(propietariosCol)
-
-    const ownerPromises = propietariosSnap.docs.map(async (ownerDoc) => {
-      const ownerId = ownerDoc.id
-      const areaPromise = getDocs(collection(db, `propietario/${ownerId}/areas`))
-      const productsPromise = getDocs(collection(db, `propietario/${ownerId}/products`))
-      
-      const [areasSnap, prodsSnap] = await Promise.allSettled([areaPromise, productsPromise])
+    try {
+      const ownerId = currentUser.uid
+      const areasSnap = await getDocs(collection(db, `propietario/${ownerId}/areas`))
+      const prodsSnap = await getDocs(collection(db, `propietario/${ownerId}/products`))
 
       const areasForOwner = []
-      if (areasSnap.status === 'fulfilled') {
-        for (const d of areasSnap.value.docs) {
-          const data = d.data()
-          if (data && typeof data.coordinates === 'string') {
-            try { data.coordinates = JSON.parse(data.coordinates) } catch (err) {}
-          }
-          areasForOwner.push(data)
+      for (const d of areasSnap.docs) {
+        const data = d.data()
+        if (data && typeof data.coordinates === 'string') {
+          try { data.coordinates = JSON.parse(data.coordinates) } catch (err) { /* ignore invalid */ }
         }
-      } else {
-        console.warn(`Error fetching areas for owner ${ownerId}:`, areasSnap.reason)
+        areasForOwner.push(data)
       }
 
       const productsForOwner = []
-      if (prodsSnap.status === 'fulfilled') {
-        for (const d of prodsSnap.value.docs) {
-          productsForOwner.push(d.data())
-        }
-      } else {
-        console.warn(`Error fetching products for owner ${ownerId}:`, prodsSnap.reason)
+      for (const d of prodsSnap.docs) {
+        productsForOwner.push(d.data())
       }
 
-      return { areas: areasForOwner, products: productsForOwner }
-    })
-
-    const results = await Promise.all(ownerPromises)
-
-    results.forEach(result => {
-      allAreas.push(...result.areas)
-      allProducts.push(...result.products)
-    })
-
-    if (allAreas.length > 0 || allProducts.length > 0) {
-      this.areas = allAreas
-      this.products = allProducts
-      localStorage.setItem('agro-areas', JSON.stringify(this.areas))
-      localStorage.setItem('agro-products', JSON.stringify(this.products))
+      // Replace local arrays only with the authenticated user's data
+      if (areasForOwner.length > 0 || productsForOwner.length > 0) {
+        this.areas = areasForOwner
+        this.products = productsForOwner
+        localStorage.setItem('agro-areas', JSON.stringify(this.areas))
+        localStorage.setItem('agro-products', JSON.stringify(this.products))
+      } else {
+        console.log('No se encontraron áreas o productos en Firestore para el usuario', ownerId)
+      }
+    } catch (err) {
+      console.warn('Error al sincronizar desde Firestore (usuario):', err && err.message)
+      console.error(err)
+    } finally {
+      // hideLoadingOverlay will be handled by caller in most flows; but ensure UI isn't left loading if called directly
+      try { this.hideLoadingOverlay() } catch (e) { /* ignore */ }
     }
   }
 
