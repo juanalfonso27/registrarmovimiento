@@ -25,6 +25,13 @@ class AgroGPSApp {
       // Handle the error, e.g., show a message to the user or disable Firestore features.
     }
 
+    // Initialize auth state listener so we sync when the user logs in/out
+    try {
+      this.initAuthListener()
+    } catch (err) {
+      console.warn('No se pudo inicializar listener de auth:', err && err.message)
+    }
+
   
     this.initMap()
     this.initEventListeners()
@@ -231,6 +238,7 @@ class AgroGPSApp {
     window.addEventListener('firebase-ready', async () => {
       this.showLoadingOverlay('Sincronizando con Firebase...')
       try {
+        // Attempt to sync; syncFromFirestore itself will check for authenticated user
         await this.syncFromFirestore()
         this.updateStats()
         this.updateAreasList()
@@ -243,6 +251,52 @@ class AgroGPSApp {
         this.hideLoadingOverlay()
       }
     })
+  }
+
+  // Set an auth state listener so the app fetches the correct user's data
+  async initAuthListener() {
+    // If firebaseAuth isn't ready yet, skip — the listener will be added when firebase-init runs
+    if (!window.firebaseAuth) {
+      // Try to wait a short time for firebase-init to dispatch firebase-ready
+      // but don't block init flow.
+      console.log('firebaseAuth no disponible aún. initAuthListener terminará sin listener.')
+      return
+    }
+
+    try {
+      const { onAuthStateChanged } = await import('https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js')
+      onAuthStateChanged(window.firebaseAuth, async (user) => {
+        if (user) {
+          console.log('onAuthStateChanged: usuario autenticado', user.uid)
+          // Ensure firestore module available
+          if (!this.firestoreModule) {
+            try {
+              this.firestoreModule = await import('https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js')
+            } catch (e) {
+              console.warn('No se pudo cargar firestore dinámicamente en auth listener:', e && e.message)
+            }
+          }
+
+          // Sync only the authenticated user's data
+          try {
+            await this.syncFromFirestore()
+            this.updateStats()
+            this.updateAreasList()
+            this.updateAreaSelect()
+            this.loadAreas()
+          } catch (err) {
+            console.warn('Error sincronizando después de onAuthStateChanged:', err && err.message)
+          }
+        } else {
+          console.log('onAuthStateChanged: usuario no autenticado')
+          // Optionally: clear map layers or fall back to local storage data
+          // this.loadAreas() will use localStorage if present
+          try { this.loadAreas() } catch (e) { /* ignore */ }
+        }
+      })
+    } catch (err) {
+      console.warn('initAuthListener error:', err && err.message)
+    }
   }
 
   // Show the loading overlay with a custom message
