@@ -3,8 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#16a34a">
     <title>AgroGestor - Iniciar Sesión</title>
-        <link rel="manifest" href="/manifest.json">
+    <!-- Use relative manifest path so it works when served from local folder -->
+    <link rel="manifest" href="manifest.json">
 
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -154,6 +156,12 @@
                 font-size: 24px;
             }
         }
+        /* Minimal helpers so the install banner works without Tailwind */
+        .hidden { display: none !important; }
+        #install-banner { position: fixed; top: 16px; left: 16px; right: 16px; background: #16a34a; color: #fff; padding: 12px; border-radius: 8px; z-index: 9998; box-shadow: 0 6px 18px rgba(0,0,0,0.25); display: flex; flex-direction: column; align-items: center; gap: 8px; }
+        #install-banner p { margin: 0; }
+        #install-banner .actions { display:flex; gap: 8px; }
+        @media (min-width: 640px) { #install-banner { flex-direction: row; justify-content: space-between; padding: 12px 20px; } }
     </style>
 </head>
 <body>
@@ -241,6 +249,18 @@
       }
       console.log('PWA was installed')
     })</script>
+        <script>
+            // Register a service worker so the PWA can be installable (needs HTTPS or localhost)
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('sw.js').then((reg) => {
+                    console.log('Service worker registered.', reg.scope)
+                }).catch((err) => {
+                    console.warn('Service worker registration failed:', err && err.message)
+                })
+            } else {
+                console.log('Service worker not supported in this browser.')
+            }
+        </script>
     <script type="module" src="auth.js"></script>
 </body>
 </html>
