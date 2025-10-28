@@ -395,9 +395,22 @@ class AgroGPSApp {
     const name = prompt("Nombre del área:", `Campo ${this.areas.length + 1}`)
     if (!name) return null
 
+    // Require authenticated user to create areas to ensure data is saved under the user's UID
+    const auth = window.firebaseAuth
+    const currentUser = auth && auth.currentUser ? auth.currentUser : null
+    if (!currentUser) {
+      alert('Debes iniciar sesión para crear un área. Por favor inicia sesión y vuelve a intentarlo.')
+      return null
+    }
+
+    // Pre-fill owner with the user's displayName or email (if available), but still allow editing
+    const defaultOwner = (currentUser.displayName && currentUser.displayName.trim())
+      ? currentUser.displayName
+      : (currentUser.email ? currentUser.email.split('@')[0] : '')
+
     let owner = ''
     while (true) {
-      owner = prompt('Propietario del área (obligatorio):', '')
+      owner = prompt('Propietario del área (obligatorio):', defaultOwner)
       if (owner === null) return null // user cancelled
       owner = owner.trim()
       if (owner) break
@@ -408,6 +421,7 @@ class AgroGPSApp {
       id: Date.now().toString(),
       name: name,
       owner: owner,
+      ownerUid: currentUser.uid,
       area: area,
       coordinates: layer.toGeoJSON().geometry.coordinates,
       type: layer instanceof L.Polygon ? "polygon" : "rectangle",
