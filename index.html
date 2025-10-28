@@ -157,6 +157,18 @@
     </style>
 </head>
 <body>
+     <!-- Install App Banner -->
+    <div id="install-banner" class="fixed top-0 left-0 right-0 bg-green-700 text-white p-3 flex flex-col items-center justify-center z-[9998] hidden">
+        <p class="text-sm mb-3">¿Te gustaría instalar AgroGestor para un acceso rápido?</p>
+        <div class="flex space-x-4">
+            <button id="install-app-btn" class="bg-white text-green-700 px-5 py-2 rounded-lg text-base font-semibold hover:bg-gray-100 shadow-md">
+                Instalar
+            </button>
+            <button id="close-install-banner" class="text-white hover:text-gray-100 px-5 py-2 rounded-lg text-base hover:bg-white/20 transition-colors duration-200">
+                No, gracias
+            </button>
+        </div>
+    </div>
     <div class="container">
         <div class="form-box">
             <div class="logo-section">
