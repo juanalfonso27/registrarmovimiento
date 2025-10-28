@@ -32,23 +32,39 @@ onAuthStateChanged(auth, (user) => {
 // Función para cargar los datos del usuario
 async function loadUserData(userId) {
     try {
-        // Obtener los movimientos del usuario
-        const q = query(collection(db, 'movements'), where('userId', '==', userId));
-        const querySnapshot = await getDocs(q);
+        // Verificar que tenemos un userId válido
+        if (!userId) {
+            console.error('No hay userId válido');
+            return;
+        }
+
+        // Obtener los movimientos del usuario usando una consulta estricta
+        const movementsRef = collection(db, 'movements');
+        const q = query(movementsRef, where('userId', '==', userId));
+        console.log('Buscando movimientos para userId:', userId); // Para depuración
         
+        const querySnapshot = await getDocs(q);
         const movementsList = document.getElementById('movements-list');
         movementsList.innerHTML = ''; // Limpiar la lista
 
+        if (querySnapshot.empty) {
+            movementsList.innerHTML = '<p>No hay movimientos registrados</p>';
+            return;
+        }
+
         querySnapshot.forEach((doc) => {
             const data = doc.data();
-            const movementElement = document.createElement('div');
-            movementElement.className = 'movement-item';
-            movementElement.innerHTML = `
-                <h3>${data.description}</h3>
-                <p>Cantidad: $${data.amount}</p>
-                <p>Fecha: ${new Date(data.date).toLocaleDateString()}</p>
-            `;
-            movementsList.appendChild(movementElement);
+            // Verificación adicional de seguridad
+            if (data.userId === userId) {
+                const movementElement = document.createElement('div');
+                movementElement.className = 'movement-item';
+                movementElement.innerHTML = `
+                    <h3>${data.description}</h3>
+                    <p>Cantidad: $${data.amount}</p>
+                    <p>Fecha: ${new Date(data.date).toLocaleDateString()}</p>
+                `;
+                movementsList.appendChild(movementElement);
+            }
         });
     } catch (error) {
         console.error('Error al cargar los datos:', error);
@@ -59,14 +75,27 @@ async function loadUserData(userId) {
 async function addMovement(description, amount) {
     try {
         const user = auth.currentUser;
-        if (!user) return;
+        if (!user) {
+            console.error('No hay usuario autenticado');
+            alert('Debes iniciar sesión para agregar movimientos');
+            return;
+        }
 
-        await addDoc(collection(db, 'movements'), {
+        const movementData = {
             userId: user.uid,
             description,
             amount: parseFloat(amount),
-            date: new Date().toISOString()
-        });
+            date: new Date().toISOString(),
+            createdAt: new Date().toISOString()
+        };
+
+        // Verificación adicional antes de guardar
+        if (!movementData.userId) {
+            console.error('Error: userId no válido');
+            return;
+        }
+
+        await addDoc(collection(db, 'movements'), movementData);
 
         // Recargar los datos
         loadUserData(user.uid);
