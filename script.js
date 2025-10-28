@@ -975,20 +975,28 @@ class AgroGPSApp {
   async saveAreaToFirestore(area) {
     if (!window.firebaseDB || !this.firestoreModule) return
     const db = window.firebaseDB
+    const auth = window.firebaseAuth
     const { doc, setDoc } = this.firestoreModule
     try {
-      const ownerPath = encodeURIComponent(area.owner)
-  // Ensure owner doc exists (so collection('propietario') will list it)
-  const ownerRef = doc(db, `propietario/${ownerPath}`)
-      await setDoc(ownerRef, { owner: area.owner, updated: new Date().toISOString() }, { merge: true })
+      // Prefer owner UID when available to enforce security rules by UID
+      const ownerUid = auth && auth.currentUser ? auth.currentUser.uid : null
+      const ownerPath = ownerUid ? ownerUid : encodeURIComponent(area.owner)
 
-  const ref = doc(db, `propietario/${ownerPath}/areas/${area.id}`)
+      // Ensure owner doc exists (store both display name and uid when possible)
+      const ownerRef = doc(db, `propietario/${ownerPath}`)
+      const ownerPayload = ownerUid ? { owner: area.owner, ownerUid: ownerUid, updated: new Date().toISOString() } : { owner: area.owner, updated: new Date().toISOString() }
+      await setDoc(ownerRef, ownerPayload, { merge: true })
+
+      const ref = doc(db, `propietario/${ownerPath}/areas/${area.id}`)
       const payload = Object.assign({}, area, { coordinates: JSON.stringify(area.coordinates) })
+      if (ownerUid) payload.ownerUid = ownerUid
+
       // Debug: log path and payload (avoid logging huge coordinate arrays in prod)
       console.log('Saving area to Firestore at', ref.path || '(no path)', 'payload preview:', {
         id: payload.id,
         name: payload.name,
         owner: payload.owner,
+        ownerUid: payload.ownerUid || '(none)',
         area: payload.area,
         coordsLength: Array.isArray(area.coordinates) ? area.coordinates.length : 0,
       })
@@ -1009,12 +1017,15 @@ class AgroGPSApp {
   async deleteAreaFromFirestore(areaId, owner) {
     if (!window.firebaseDB || !owner || !this.firestoreModule) return
     const db = window.firebaseDB
+    const auth = window.firebaseAuth
     const { doc, deleteDoc } = this.firestoreModule
     try {
-      const ownerPath = encodeURIComponent(owner)
-  await deleteDoc(doc(db, `propietario/${ownerPath}/areas/${areaId}`))
+      const ownerUid = auth && auth.currentUser ? auth.currentUser.uid : null
+      const ownerPath = ownerUid ? ownerUid : encodeURIComponent(owner)
+      await deleteDoc(doc(db, `propietario/${ownerPath}/areas/${areaId}`))
     } catch (err) {
       console.warn('deleteAreaFromFirestore error:', err && err.message)
+      console.error(err)
     }
   }
 
@@ -1023,24 +1034,32 @@ class AgroGPSApp {
     // Determine owner from product.areaId
     const area = this.areas.find((a) => a.id === product.areaId)
     if (!area || !area.owner) return
-    const ownerPath = encodeURIComponent(area.owner)
     const db = window.firebaseDB
+    const auth = window.firebaseAuth
     const { doc, setDoc } = this.firestoreModule
     try {
-      // Ensure owner doc exists
-  const ownerRef = doc(db, `propietario/${ownerPath}`)
-      await setDoc(ownerRef, { owner: area.owner, updated: new Date().toISOString() }, { merge: true })
+      const ownerUid = auth && auth.currentUser ? auth.currentUser.uid : null
+      const ownerPath = ownerUid ? ownerUid : encodeURIComponent(area.owner)
 
-  const ref = doc(db, `propietario/${ownerPath}/products/${product.id}`)
+      // Ensure owner doc exists
+      const ownerRef = doc(db, `propietario/${ownerPath}`)
+      const ownerPayload = ownerUid ? { owner: area.owner, ownerUid: ownerUid, updated: new Date().toISOString() } : { owner: area.owner, updated: new Date().toISOString() }
+      await setDoc(ownerRef, ownerPayload, { merge: true })
+
+      const ref = doc(db, `propietario/${ownerPath}/products/${product.id}`)
+      const productPayload = Object.assign({}, product)
+      if (ownerUid) productPayload.ownerUid = ownerUid
+
       console.log('Saving product to Firestore at', ref.path || '(no path)', 'product preview:', {
-        id: product.id,
-        name: product.name,
-        areaId: product.areaId,
-        quantity: product.quantity,
+        id: productPayload.id,
+        name: productPayload.name,
+        areaId: productPayload.areaId,
+        quantity: productPayload.quantity,
+        ownerUid: productPayload.ownerUid || '(none)'
       })
 
       try {
-        await setDoc(ref, product)
+        await setDoc(ref, productPayload)
       } catch (innerErr) {
         console.error('Firestore setDoc failed for product:', innerErr)
         throw innerErr
@@ -1054,12 +1073,15 @@ class AgroGPSApp {
   async deleteProductFromFirestore(productId, owner) {
     if (!window.firebaseDB || !owner || !this.firestoreModule) return
     const db = window.firebaseDB
+    const auth = window.firebaseAuth
     const { doc, deleteDoc } = this.firestoreModule
     try {
-      const ownerPath = encodeURIComponent(owner)
-  await deleteDoc(doc(db, `propietario/${ownerPath}/products/${productId}`))
+      const ownerUid = auth && auth.currentUser ? auth.currentUser.uid : null
+      const ownerPath = ownerUid ? ownerUid : encodeURIComponent(owner)
+      await deleteDoc(doc(db, `propietario/${ownerPath}/products/${productId}`))
     } catch (err) {
       console.warn('deleteProductFromFirestore error:', err && err.message)
+      console.error(err)
     }
   }
 
@@ -1070,22 +1092,28 @@ class AgroGPSApp {
     const { doc, setDoc, collection, getDocs, deleteDoc } = this.firestoreModule
   // Group areas and products by owner and write under propietario/{owner}/areas and propietario/{owner}/products
     const owners = {}
+    // Group by owner path: prefer ownerUid (if present on area), otherwise fallback to encoded owner name
     for (const a of this.areas) {
-      owners[a.owner] = owners[a.owner] || { areas: [], products: [] }
-      owners[a.owner].areas.push(a)
+      const ownerUid = a.ownerUid || null
+      const ownerKey = ownerUid ? ownerUid : encodeURIComponent(a.owner)
+      owners[ownerKey] = owners[ownerKey] || { displayName: a.owner, areas: [], products: [] }
+      owners[ownerKey].areas.push(a)
     }
     for (const p of this.products) {
-      owners[p.areaId ? (this.areas.find((a) => a.id === p.areaId) || {}).owner : ''] = owners[p.areaId ? (this.areas.find((a) => a.id === p.areaId) || {}).owner : ''] || { areas: [], products: [] }
-      const ownerForProd = (this.areas.find((a) => a.id === p.areaId) || {}).owner || ''
-      if (ownerForProd) owners[ownerForProd].products.push(p)
+      const areaObj = this.areas.find((a) => a.id === p.areaId) || {}
+      const ownerUid = areaObj.ownerUid || null
+      const ownerKey = ownerUid ? ownerUid : encodeURIComponent(areaObj.owner || '')
+      if (!ownerKey) continue
+      owners[ownerKey] = owners[ownerKey] || { displayName: areaObj.owner || '', areas: [], products: [] }
+      owners[ownerKey].products.push(p)
     }
 
-    for (const ownerName of Object.keys(owners)) {
-      if (!ownerName) continue
-      const ownerAreas = owners[ownerName].areas
-      const ownerProducts = owners[ownerName].products
+    for (const ownerKey of Object.keys(owners)) {
+      if (!ownerKey) continue
+      const ownerAreas = owners[ownerKey].areas
+      const ownerProducts = owners[ownerKey].products
 
-  const basePath = `propietario/${encodeURIComponent(ownerName)}`
+      const basePath = `propietario/${ownerKey}`
 
       // Areas
       for (const a of ownerAreas) {
