@@ -77,6 +77,36 @@ h2 {
     line-height: 1.4;
 }
 
+.status-message {
+    margin: 10px 0 4px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    font-size: 14px;
+    display: none;
+}
+
+.status-message.show {
+    display: block;
+}
+
+.status-message.error {
+    background: #fef2f2;
+    color: #991b1b;
+    border: 1px solid #fecdd3;
+}
+
+.status-message.success {
+    background: #f0fdf4;
+    color: #166534;
+    border: 1px solid #bbf7d0;
+}
+
+.status-message.info {
+    background: #eff6ff;
+    color: #1d4ed8;
+    border: 1px solid #bfdbfe;
+}
+
 .input-group {
     margin-top: 8px;
     display: flex;

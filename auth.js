@@ -26,6 +26,20 @@ const db = getFirestore(app);
 const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: 'select_account' });
 
+function setStatus(message, type = 'info') {
+    const el = document.getElementById('authMessage');
+    if (!el) return;
+    el.textContent = message;
+    el.className = `status-message show ${type}`;
+}
+
+function clearStatus() {
+    const el = document.getElementById('authMessage');
+    if (!el) return;
+    el.textContent = '';
+    el.className = 'status-message';
+}
+
 function cleanUsername(username) {
     return (username || '').trim();
 }
@@ -53,11 +67,11 @@ async function upsertUserProfile(user, extra = {}) {
 async function registerUser(username, password) {
     const trimmedUsername = cleanUsername(username);
     if (!trimmedUsername) {
-        alert('Ingresa un nombre de usuario');
+        setStatus('Ingresa un nombre de usuario', 'error');
         return;
     }
     if (!password || password.length < 6) {
-        alert('La contrasena debe tener al menos 6 caracteres');
+        setStatus('La contrasena debe tener al menos 6 caracteres', 'error');
         return;
     }
 
@@ -68,9 +82,11 @@ async function registerUser(username, password) {
             username: trimmedUsername,
             provider: 'password'
         });
+        setStatus('Cuenta creada, redirigiendo...', 'success');
         window.location.href = 'app.html';
     } catch (error) {
-        alert('Error al registrar: ' + error.message);
+        const message = friendlyAuthError(error);
+        setStatus(message, 'error');
     }
 }
 
@@ -78,15 +94,17 @@ async function registerUser(username, password) {
 async function loginUser(username, password) {
     const trimmedUsername = cleanUsername(username);
     if (!trimmedUsername || !password) {
-        alert('Completa usuario y contrasena');
+        setStatus('Completa usuario y contrasena', 'error');
         return;
     }
 
     try {
         await signInWithEmailAndPassword(auth, `${trimmedUsername}@domain.com`, password);
+        setStatus('Accediendo...', 'success');
         window.location.href = 'app.html';
     } catch (error) {
-        alert('Error al iniciar sesion: ' + error.message);
+        const message = friendlyAuthError(error);
+        setStatus(message, 'error');
     }
 }
 
@@ -95,11 +113,28 @@ async function loginWithGoogle() {
     try {
         const result = await signInWithPopup(auth, googleProvider);
         await upsertUserProfile(result.user, { provider: 'google' });
+        setStatus('Accediendo con Google...', 'success');
         window.location.href = 'app.html';
     } catch (error) {
         console.error('Error con Google:', error);
-        alert('No pudimos iniciar sesion con Google: ' + error.message);
+        const message = friendlyAuthError(error);
+        setStatus(message, 'error');
     }
+}
+
+function friendlyAuthError(error) {
+    const code = error?.code || '';
+    const map = {
+        'auth/invalid-credential': 'Usuario o contrasena incorrecta.',
+        'auth/wrong-password': 'Contrasena incorrecta.',
+        'auth/user-not-found': 'No encontramos esa cuenta.',
+        'auth/too-many-requests': 'Demasiados intentos. Intenta nuevamente en unos minutos.',
+        'auth/popup-blocked': 'El navegador bloqueo la ventana de Google. Permite el popup y reintenta.',
+        'auth/popup-closed-by-user': 'Cerraste el popup de Google. Intenta de nuevo.',
+        'auth/network-request-failed': 'Problema de conexion. Revisa tu red e intenta otra vez.',
+        'auth/unauthorized-domain': 'Dominio no autorizado en Firebase. Verifica la configuracion.',
+    };
+    return map[code] || 'No pudimos completar la accion. Intenta de nuevo.';
 }
 
 // Event Listeners
@@ -112,6 +147,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (loginForm) {
         loginForm.addEventListener('submit', (e) => {
             e.preventDefault();
+            clearStatus();
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
             loginUser(username, password);
@@ -121,12 +157,13 @@ document.addEventListener('DOMContentLoaded', () => {
     if (registerForm) {
         registerForm.addEventListener('submit', (e) => {
             e.preventDefault();
+            clearStatus();
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
             const confirmPassword = document.getElementById('confirmPassword').value;
 
             if (password !== confirmPassword) {
-                alert('Las contrasenas no coinciden');
+                setStatus('Las contrasenas no coinciden', 'error');
                 return;
             }
             registerUser(username, password);
@@ -137,6 +174,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (btn) {
             btn.addEventListener('click', (e) => {
                 e.preventDefault();
+                clearStatus();
                 loginWithGoogle();
             });
         }
