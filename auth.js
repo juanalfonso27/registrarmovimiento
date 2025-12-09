@@ -113,11 +113,14 @@ function friendlyAuthError(error, context = {}) {
         'auth/user-not-found': `No encontramos la cuenta${name}. Revisa el usuario o registrate.`,
         'auth/too-many-requests': 'Demasiados intentos. Intenta nuevamente en unos minutos.',
         'auth/network-request-failed': 'Problema de conexion. Revisa tu red e intenta otra vez.',
-        'auth/email-already-in-use': `Ya existe una cuenta con el usuario${name}.`,
+        'auth/email-already-in-use': `Ese usuario${name} ya esta en uso. Inicia sesion o elige otro.`,
         'auth/invalid-email': 'El usuario ingresado no es valido. Intenta de nuevo.',
         'auth/internal-error': 'No pudimos completar la accion. Intenta de nuevo.',
     };
-    return map[code] || 'No pudimos completar la accion. Intenta de nuevo.';
+    const fallback = context.stage === 'register'
+        ? 'No pudimos crear tu cuenta. Intenta de nuevo.'
+        : 'No pudimos iniciar sesion. Intenta de nuevo.';
+    return map[code] || fallback;
 }
 
 // Event Listeners
