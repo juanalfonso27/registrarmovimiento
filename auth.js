@@ -2,9 +2,7 @@ import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.22.2/firebas
 import {
     getAuth,
     signInWithEmailAndPassword,
-    createUserWithEmailAndPassword,
-    GoogleAuthProvider,
-    signInWithPopup
+    createUserWithEmailAndPassword
 } from 'https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js';
 import { getFirestore, doc, setDoc } from 'https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js';
 
@@ -23,9 +21,6 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-const googleProvider = new GoogleAuthProvider();
-googleProvider.setCustomParameters({ prompt: 'select_account' });
-const LAST_PROVIDER_KEY = 'agro-last-provider';
 
 function setStatus(message, type = 'info') {
     const el = document.getElementById('authMessage');
@@ -39,38 +34,6 @@ function clearStatus() {
     if (!el) return;
     el.textContent = '';
     el.className = 'status-message';
-}
-
-function rememberProvider(provider) {
-    try {
-        localStorage.setItem(LAST_PROVIDER_KEY, provider);
-    } catch (e) {
-        console.warn('No se pudo guardar el proveedor usado', e);
-    }
-}
-
-function applyLastProviderPreference() {
-    const last = (() => {
-        try { return localStorage.getItem(LAST_PROVIDER_KEY); } catch (e) { return null; }
-    })();
-    const googleButtons = [document.getElementById('googleLoginBtn'), document.getElementById('googleRegisterBtn')].filter(Boolean);
-    const notice = document.getElementById('googleNotice');
-    if (last === 'google') {
-        googleButtons.forEach(btn => btn.classList.add('hidden'));
-        if (notice) notice.classList.remove('hidden');
-    } else {
-        googleButtons.forEach(btn => btn.classList.remove('hidden'));
-        if (notice) notice.classList.add('hidden');
-    }
-}
-
-function enableShowGoogleAgain() {
-    const trigger = document.getElementById('showGoogleAgain');
-    if (!trigger) return;
-    trigger.addEventListener('click', () => {
-        try { localStorage.removeItem(LAST_PROVIDER_KEY); } catch (e) { /* ignore */ }
-        applyLastProviderPreference();
-    });
 }
 
 function cleanUsername(username) {
@@ -115,11 +78,10 @@ async function registerUser(username, password) {
             username: trimmedUsername,
             provider: 'password'
         });
-        rememberProvider('password');
         setStatus('Cuenta creada, redirigiendo...', 'success');
         window.location.href = 'app.html';
     } catch (error) {
-        const message = friendlyAuthError(error);
+        const message = friendlyAuthError(error, { username: trimmedUsername, stage: 'register' });
         setStatus(message, 'error');
     }
 }
@@ -134,41 +96,26 @@ async function loginUser(username, password) {
 
     try {
         await signInWithEmailAndPassword(auth, `${trimmedUsername}@domain.com`, password);
-        rememberProvider('password');
         setStatus('Accediendo...', 'success');
         window.location.href = 'app.html';
     } catch (error) {
-        const message = friendlyAuthError(error);
+        const message = friendlyAuthError(error, { username: trimmedUsername, stage: 'login' });
         setStatus(message, 'error');
     }
 }
 
-// Iniciar sesion/registro con Google
-async function loginWithGoogle() {
-    try {
-        const result = await signInWithPopup(auth, googleProvider);
-        await upsertUserProfile(result.user, { provider: 'google' });
-        rememberProvider('google');
-        setStatus('Accediendo con Google...', 'success');
-        window.location.href = 'app.html';
-    } catch (error) {
-        console.error('Error con Google:', error);
-        const message = friendlyAuthError(error);
-        setStatus(message, 'error');
-    }
-}
-
-function friendlyAuthError(error) {
+function friendlyAuthError(error, context = {}) {
     const code = error?.code || '';
+    const name = context.username ? ` "${context.username}"` : '';
     const map = {
         'auth/invalid-credential': 'Usuario o contrasena incorrecta.',
-        'auth/wrong-password': 'Contrasena incorrecta.',
-        'auth/user-not-found': 'No encontramos esa cuenta.',
+        'auth/wrong-password': 'Contrasena incorrecta. Revisa mayusculas y vuelve a intentar.',
+        'auth/user-not-found': `No encontramos la cuenta${name}. Revisa el usuario o registrate.`,
         'auth/too-many-requests': 'Demasiados intentos. Intenta nuevamente en unos minutos.',
-        'auth/popup-blocked': 'El navegador bloqueo la ventana de Google. Permite el popup y reintenta.',
-        'auth/popup-closed-by-user': 'Cerraste el popup de Google. Intenta de nuevo.',
         'auth/network-request-failed': 'Problema de conexion. Revisa tu red e intenta otra vez.',
-        'auth/unauthorized-domain': 'Dominio no autorizado en Firebase. Verifica la configuracion.',
+        'auth/email-already-in-use': `Ya existe una cuenta con el usuario${name}.`,
+        'auth/invalid-email': 'El usuario ingresado no es valido. Intenta de nuevo.',
+        'auth/internal-error': 'No pudimos completar la accion. Intenta de nuevo.',
     };
     return map[code] || 'No pudimos completar la accion. Intenta de nuevo.';
 }
@@ -177,8 +124,6 @@ function friendlyAuthError(error) {
 document.addEventListener('DOMContentLoaded', () => {
     const loginForm = document.getElementById('loginForm');
     const registerForm = document.getElementById('registerForm');
-    const googleLoginBtn = document.getElementById('googleLoginBtn');
-    const googleRegisterBtn = document.getElementById('googleRegisterBtn');
 
     if (loginForm) {
         loginForm.addEventListener('submit', (e) => {
@@ -205,17 +150,4 @@ document.addEventListener('DOMContentLoaded', () => {
             registerUser(username, password);
         });
     }
-
-    [googleLoginBtn, googleRegisterBtn].forEach((btn) => {
-        if (btn) {
-            btn.addEventListener('click', (e) => {
-                e.preventDefault();
-                clearStatus();
-                loginWithGoogle();
-            });
-        }
-    });
-
-    applyLastProviderPreference();
-    enableShowGoogleAgain();
 });

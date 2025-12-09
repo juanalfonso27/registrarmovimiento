@@ -187,63 +187,6 @@ h2 {
     box-shadow: 0 10px 20px rgba(15, 125, 68, 0.24);
 }
 
-.social-login {
-    margin-top: 18px;
-}
-
-.divider {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    color: #6b7280;
-    font-size: 12px;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-}
-
-.divider::before,
-.divider::after {
-    content: "";
-    height: 1px;
-    flex: 1;
-    background: #e5e7eb;
-}
-
-.google-btn {
-    margin-top: 12px;
-    width: 100%;
-    padding: 12px;
-    background: #ffffff;
-    color: #1f2937;
-    border: 1px solid #e5e7eb;
-    border-radius: 10px;
-    cursor: pointer;
-    font-size: 15px;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    transition: all 0.2s ease;
-    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.05);
-}
-
-.google-btn i {
-    color: #db4437;
-    font-size: 16px;
-}
-
-.google-btn:hover {
-    border-color: #cbd5e1;
-    transform: translateY(-1px);
-    box-shadow: 0 14px 30px rgba(0, 0, 0, 0.08);
-}
-
-.google-btn:active {
-    transform: translateY(0);
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.05);
-}
-
 .register-link {
     text-align: center;
     margin-top: 18px;
@@ -265,26 +208,7 @@ h2 {
     display: none !important;
 }
 
-.google-note {
-    margin-top: 12px;
-    font-size: 13px;
-    color: var(--text-sub);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.google-note button {
-    border: none;
-    background: transparent;
-    color: var(--green-2);
-    cursor: pointer;
-    padding: 0;
-    font-weight: 700;
-}
-
 @media (prefers-reduced-motion: reduce) {
-    .google-btn,
     #registerBtn {
         transition: none;
     }
