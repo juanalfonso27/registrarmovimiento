@@ -261,6 +261,35 @@ h2 {
     color: var(--green-1);
 }
 
+.hidden {
+    display: none !important;
+}
+
+.google-note {
+    margin-top: 12px;
+    font-size: 13px;
+    color: var(--text-sub);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.google-note button {
+    border: none;
+    background: transparent;
+    color: var(--green-2);
+    cursor: pointer;
+    padding: 0;
+    font-weight: 700;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .google-btn,
+    #registerBtn {
+        transition: none;
+    }
+}
+
 @media (max-width: 480px) {
     .form-box {
         padding: 28px 22px;

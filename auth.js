@@ -25,6 +25,7 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: 'select_account' });
+const LAST_PROVIDER_KEY = 'agro-last-provider';
 
 function setStatus(message, type = 'info') {
     const el = document.getElementById('authMessage');
@@ -38,6 +39,38 @@ function clearStatus() {
     if (!el) return;
     el.textContent = '';
     el.className = 'status-message';
+}
+
+function rememberProvider(provider) {
+    try {
+        localStorage.setItem(LAST_PROVIDER_KEY, provider);
+    } catch (e) {
+        console.warn('No se pudo guardar el proveedor usado', e);
+    }
+}
+
+function applyLastProviderPreference() {
+    const last = (() => {
+        try { return localStorage.getItem(LAST_PROVIDER_KEY); } catch (e) { return null; }
+    })();
+    const googleButtons = [document.getElementById('googleLoginBtn'), document.getElementById('googleRegisterBtn')].filter(Boolean);
+    const notice = document.getElementById('googleNotice');
+    if (last === 'google') {
+        googleButtons.forEach(btn => btn.classList.add('hidden'));
+        if (notice) notice.classList.remove('hidden');
+    } else {
+        googleButtons.forEach(btn => btn.classList.remove('hidden'));
+        if (notice) notice.classList.add('hidden');
+    }
+}
+
+function enableShowGoogleAgain() {
+    const trigger = document.getElementById('showGoogleAgain');
+    if (!trigger) return;
+    trigger.addEventListener('click', () => {
+        try { localStorage.removeItem(LAST_PROVIDER_KEY); } catch (e) { /* ignore */ }
+        applyLastProviderPreference();
+    });
 }
 
 function cleanUsername(username) {
@@ -82,6 +115,7 @@ async function registerUser(username, password) {
             username: trimmedUsername,
             provider: 'password'
         });
+        rememberProvider('password');
         setStatus('Cuenta creada, redirigiendo...', 'success');
         window.location.href = 'app.html';
     } catch (error) {
@@ -100,6 +134,7 @@ async function loginUser(username, password) {
 
     try {
         await signInWithEmailAndPassword(auth, `${trimmedUsername}@domain.com`, password);
+        rememberProvider('password');
         setStatus('Accediendo...', 'success');
         window.location.href = 'app.html';
     } catch (error) {
@@ -113,6 +148,7 @@ async function loginWithGoogle() {
     try {
         const result = await signInWithPopup(auth, googleProvider);
         await upsertUserProfile(result.user, { provider: 'google' });
+        rememberProvider('google');
         setStatus('Accediendo con Google...', 'success');
         window.location.href = 'app.html';
     } catch (error) {
@@ -179,4 +215,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
     });
+
+    applyLastProviderPreference();
+    enableShowGoogleAgain();
 });
