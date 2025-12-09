@@ -10,29 +10,42 @@
 <body>
     <div class="container">
         <div class="form-box">
-            <h2>Crear Cuenta</h2>
+            <div class="header">
+                <div class="logo-icon">
+                    <i class="fas fa-seedling"></i>
+                </div>
+                <div>
+                    <p class="eyebrow">AgroGestor</p>
+                    <h2>Crea tu cuenta</h2>
+                    <p class="subtitle">Administra tus registros y vuelve cuando quieras.</p>
+                </div>
+            </div>
             <form id="registerForm">
                 <div class="input-group">
-                    <div class="input-field">
-                        <i class="fas fa-user"></i>
-                        <input type="text" id="username" placeholder="Nombre de usuario" required>
+                    <label class="input-label" for="email">Correo electronico</label>
+                    <div class="input-field with-icon">
+                        <i class="fas fa-envelope"></i>
+                        <input type="email" id="email" placeholder="correo@dominio.com" autocomplete="email" required>
                     </div>
-                    <div class="input-field">
+                    <label class="input-label" for="password">Contrasena</label>
+                    <div class="input-field with-icon">
                         <i class="fas fa-lock"></i>
-                        <input type="password" id="password" placeholder="Contraseña" required>
+                        <input type="password" id="password" placeholder="Minimo 6 caracteres" autocomplete="new-password" required>
                     </div>
-                    <div class="input-field">
-                        <i class="fas fa-lock"></i>
-                        <input type="password" id="confirmPassword" placeholder="Confirmar contraseña" required>
+                    <label class="input-label" for="confirmPassword">Confirma tu contrasena</label>
+                    <div class="input-field with-icon">
+                        <i class="fas fa-shield-alt"></i>
+                        <input type="password" id="confirmPassword" placeholder="Repite tu contrasena" autocomplete="new-password" required>
                     </div>
                 </div>
+                <div class="status-message" id="authMessage"></div>
                 <div class="btn-field">
-                    <button type="submit" id="registerBtn">Registrarse</button>
+                    <button type="submit" id="registerBtn">Crear cuenta</button>
                 </div>
-                <p class="register-link">¿Ya tienes una cuenta? <a href="index.html">Inicia sesión aquí</a></p>
+                <p class="register-link">Ya tienes una cuenta? <a href="index.html">Inicia sesion aqui</a></p>
             </form>
         </div>
     </div>
-    <script type="module" src="auth.js"></script>
+    <script type="module" src="auth.js?v=2"></script>
 </body>
 </html>
