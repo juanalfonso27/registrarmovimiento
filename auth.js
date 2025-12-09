@@ -2,7 +2,8 @@ import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.22.2/firebas
 import {
     getAuth,
     signInWithEmailAndPassword,
-    createUserWithEmailAndPassword
+    createUserWithEmailAndPassword,
+    sendPasswordResetEmail
 } from 'https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js';
 import { getFirestore, doc, setDoc } from 'https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js';
 
@@ -39,8 +40,8 @@ function clearStatus() {
     el.className = 'status-message';
 }
 
-function cleanUsername(username) {
-    return (username || '').trim();
+function cleanEmail(email) {
+    return (email || '').trim();
 }
 
 async function upsertUserProfile(user, extra = {}) {
@@ -63,10 +64,14 @@ async function upsertUserProfile(user, extra = {}) {
 }
 
 // Registrar usuarios con email/usuario
-async function registerUser(username, password) {
-    const trimmedUsername = cleanUsername(username);
-    if (!trimmedUsername) {
-        setStatus('Ingresa un nombre de usuario', 'error');
+async function registerUser(email, password) {
+    const trimmedEmail = cleanEmail(email);
+    if (!trimmedEmail) {
+        setStatus('Ingresa tu correo', 'error');
+        return;
+    }
+    if (!trimmedEmail.includes('@')) {
+        setStatus('El correo no es valido', 'error');
         return;
     }
     if (!password || password.length < 6) {
@@ -75,50 +80,69 @@ async function registerUser(username, password) {
     }
 
     try {
-        const email = `${trimmedUsername}@domain.com`;
-        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const userCredential = await createUserWithEmailAndPassword(auth, trimmedEmail, password);
         await upsertUserProfile(userCredential.user, {
-            username: trimmedUsername,
+            username: trimmedEmail.split('@')[0],
             provider: 'password'
         });
         setStatus('Cuenta creada, redirigiendo...', 'success');
         window.location.href = 'app.html';
     } catch (error) {
-        const message = friendlyAuthError(error, { username: trimmedUsername, stage: 'register' });
+        const message = friendlyAuthError(error, { email: trimmedEmail, stage: 'register' });
         setStatus(message, 'error');
     }
 }
 
 // Iniciar sesion con email/usuario
-async function loginUser(username, password) {
-    const trimmedUsername = cleanUsername(username);
-    if (!trimmedUsername || !password) {
-        setStatus('Completa usuario y contrasena', 'error');
+async function loginUser(email, password) {
+    const trimmedEmail = cleanEmail(email);
+    if (!trimmedEmail || !password) {
+        setStatus('Completa correo y contrasena', 'error');
         return;
     }
 
     try {
-        await signInWithEmailAndPassword(auth, `${trimmedUsername}@domain.com`, password);
+        await signInWithEmailAndPassword(auth, trimmedEmail, password);
         setStatus('Accediendo...', 'success');
         window.location.href = 'app.html';
     } catch (error) {
-        const message = friendlyAuthError(error, { username: trimmedUsername, stage: 'login' });
+        const message = friendlyAuthError(error, { email: trimmedEmail, stage: 'login' });
+        setStatus(message, 'error');
+    }
+}
+
+async function resetPassword(email) {
+    const trimmedEmail = cleanEmail(email);
+    if (!trimmedEmail) {
+        setStatus('Ingresa tu correo para enviarte la recuperacion.', 'error');
+        return;
+    }
+    if (!trimmedEmail.includes('@')) {
+        setStatus('El correo no es valido', 'error');
+        return;
+    }
+    try {
+        await sendPasswordResetEmail(auth, trimmedEmail);
+        setStatus(`Enviamos un correo a ${trimmedEmail}. Revisa tu bandeja (y spam).`, 'success');
+    } catch (error) {
+        const message = friendlyAuthError(error, { email: trimmedEmail, stage: 'reset' });
         setStatus(message, 'error');
     }
 }
 
 function friendlyAuthError(error, context = {}) {
     const code = error?.code || '';
-    const name = context.username ? ` "${context.username}"` : '';
+    const name = context.email ? ` "${context.email}"` : '';
     const map = {
-        'auth/invalid-credential': 'Usuario o contrasena incorrecta.',
+        'auth/invalid-credential': 'Correo o contrasena incorrecta.',
         'auth/wrong-password': 'Contrasena incorrecta. Revisa mayusculas y vuelve a intentar.',
-        'auth/user-not-found': `No encontramos la cuenta${name}. Revisa el usuario o registrate.`,
+        'auth/user-not-found': `No encontramos la cuenta${name}. Revisa el correo o registrate.`,
         'auth/too-many-requests': 'Demasiados intentos. Intenta nuevamente en unos minutos.',
         'auth/network-request-failed': 'Problema de conexion. Revisa tu red e intenta otra vez.',
-        'auth/email-already-in-use': `Ese usuario${name} ya esta en uso. Inicia sesion o elige otro.`,
-        'auth/invalid-email': 'El usuario ingresado no es valido. Intenta de nuevo.',
+        'auth/email-already-in-use': `Ese correo${name} ya esta en uso. Inicia sesion o usa otro.`,
+        'auth/invalid-email': 'El correo ingresado no es valido. Intenta de nuevo.',
         'auth/internal-error': 'No pudimos completar la accion. Intenta de nuevo.',
+        'auth/missing-email': 'Ingresa tu usuario para recuperar la contrasena.',
     };
     const fallback = context.stage === 'register'
         ? 'No pudimos crear tu cuenta. Intenta de nuevo.'
@@ -130,14 +154,15 @@ function friendlyAuthError(error, context = {}) {
 document.addEventListener('DOMContentLoaded', () => {
     const loginForm = document.getElementById('loginForm');
     const registerForm = document.getElementById('registerForm');
+    const resetLink = document.getElementById('resetLink');
 
     if (loginForm) {
         loginForm.addEventListener('submit', (e) => {
             e.preventDefault();
             clearStatus();
-            const username = document.getElementById('username').value;
+            const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
-            loginUser(username, password);
+            loginUser(email, password);
         });
     }
 
@@ -145,7 +170,7 @@ document.addEventListener('DOMContentLoaded', () => {
         registerForm.addEventListener('submit', (e) => {
             e.preventDefault();
             clearStatus();
-            const username = document.getElementById('username').value;
+            const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
             const confirmPassword = document.getElementById('confirmPassword').value;
 
@@ -153,7 +178,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 setStatus('Las contrasenas no coinciden', 'error');
                 return;
             }
-            registerUser(username, password);
+            registerUser(email, password);
+        });
+    }
+
+    if (resetLink) {
+        resetLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            clearStatus();
+            const emailInput = document.getElementById('email');
+            const email = emailInput ? emailInput.value : '';
+            resetPassword(email);
         });
     }
 });

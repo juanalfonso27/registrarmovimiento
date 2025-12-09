@@ -189,7 +189,7 @@
             <form id="loginForm">
                 <div class="input-group">
                     <div class="input-field">
-                        <input type="text" id="username" placeholder="Nombre de usuario" required>
+                        <input type="email" id="email" placeholder="Correo electronico" autocomplete="email" required>
                     </div>
                     <div class="input-field">
                         <input type="password" id="password" placeholder="Contrasena" required>
@@ -200,6 +200,9 @@
                     <button type="submit" id="loginBtn">Ingresar</button>
                 </div>
             </form>
+            <div class="extra-options" style="margin-top: 14px;">
+                <a href="#" id="resetLink" style="color: #1e9e5e; text-decoration: none;">Olvidaste tu contrasena?</a>
+            </div>
             <div class="extra-options">
                 <span>No tienes una cuenta? <a href="register.html" style="text-decoration: none; color: #1e9e5e;">Registrate</a></span>
             </div>
