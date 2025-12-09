@@ -22,6 +22,9 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
+// Fallback to show inline status instead of popups if something calls alert
+window.alert = (msg) => setStatus(msg, 'error');
+
 function setStatus(message, type = 'info') {
     const el = document.getElementById('authMessage');
     if (!el) return;
