@@ -162,6 +162,40 @@
         #install-banner p { margin: 0; }
         #install-banner .actions { display:flex; gap: 8px; }
         @media (min-width: 640px) { #install-banner { flex-direction: row; justify-content: space-between; padding: 12px 20px; } }
+
+        .reset-card {
+            margin-top: 18px;
+            padding: 14px 16px;
+            border: 1px solid #e0e0e0;
+            border-radius: 10px;
+            background: #f7fbf8;
+        }
+
+        .reset-card h4 {
+            margin: 0 0 6px 0;
+            color: #1e9e5e;
+            font-size: 16px;
+        }
+
+        .reset-card p {
+            margin: 0 0 10px 0;
+            color: #4b5563;
+            font-size: 14px;
+        }
+
+        .reset-card .input-field {
+            margin-bottom: 12px;
+        }
+
+        .link-button {
+            color: #1e9e5e;
+            background: none;
+            border: none;
+            padding: 0;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+        }
     </style>
 </head>
 <body>
@@ -205,6 +239,14 @@
             </div>
             <div class="extra-options">
                 <span>No tienes una cuenta? <a href="register.html" style="text-decoration: none; color: #1e9e5e;">Registrate</a></span>
+            </div>
+            <div class="reset-card hidden" id="resetCard">
+                <h4>Recupera tu acceso</h4>
+                <p>Enviaremos un enlace de recuperacion al correo de tu cuenta.</p>
+                <div class="input-field">
+                    <input type="email" id="resetEmail" placeholder="tu-correo@dominio.com" autocomplete="email">
+                </div>
+                <button type="button" id="resetBtn" class="link-button">Enviar enlace de recuperacion</button>
             </div>
         </div>
     </div>

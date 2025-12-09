@@ -155,6 +155,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const loginForm = document.getElementById('loginForm');
     const registerForm = document.getElementById('registerForm');
     const resetLink = document.getElementById('resetLink');
+    const resetBtn = document.getElementById('resetBtn');
+    const resetEmailInput = document.getElementById('resetEmail');
+    const resetCard = document.getElementById('resetCard');
 
     if (loginForm) {
         loginForm.addEventListener('submit', (e) => {
@@ -188,6 +191,20 @@ document.addEventListener('DOMContentLoaded', () => {
             clearStatus();
             const emailInput = document.getElementById('email');
             const email = emailInput ? emailInput.value : '';
+            if (resetEmailInput && email) {
+                resetEmailInput.value = email;
+            }
+            if (resetEmailInput) {
+                resetEmailInput.focus();
+            }
+            if (resetCard) resetCard.classList.remove('hidden');
+        });
+    }
+
+    if (resetBtn) {
+        resetBtn.addEventListener('click', () => {
+            clearStatus();
+            const email = resetEmailInput ? resetEmailInput.value : '';
             resetPassword(email);
         });
     }
