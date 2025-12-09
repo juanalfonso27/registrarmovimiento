@@ -1,8 +1,14 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js';
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js';
+import {
+    getAuth,
+    signInWithEmailAndPassword,
+    createUserWithEmailAndPassword,
+    GoogleAuthProvider,
+    signInWithPopup
+} from 'https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js';
 import { getFirestore, doc, setDoc } from 'https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js';
 
-// Configuración de Firebase
+// Configuracion de Firebase
 const firebaseConfig = {
     apiKey: "AIzaSyDjFqNeLUSVv0LkZ8QlC6H5G_ApPg1GT4Y",
     authDomain: "gabriel-bca01.firebaseapp.com",
@@ -17,34 +23,82 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+const googleProvider = new GoogleAuthProvider();
+googleProvider.setCustomParameters({ prompt: 'select_account' });
 
-// Función para registrar usuarios
-async function registerUser(username, password) {
+function cleanUsername(username) {
+    return (username || '').trim();
+}
+
+async function upsertUserProfile(user, extra = {}) {
+    if (!user) return;
+
+    const fallbackUsername = user.email ? user.email.split('@')[0] : 'usuario';
+    const profile = {
+        username: extra.username || user.displayName || fallbackUsername,
+        email: user.email || '',
+        provider: extra.provider || (user.providerData?.[0]?.providerId ?? 'password'),
+        createdAt: extra.createdAt || user.metadata?.creationTime || new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+    };
+
     try {
-        // Crear usuario con email (usando username como email para simplificar)
-        const userCredential = await createUserWithEmailAndPassword(auth, `${username}@domain.com`, password);
-        const user = userCredential.user;
+        await setDoc(doc(db, 'users', user.uid), profile, { merge: true });
+    } catch (error) {
+        console.error('No se pudo guardar el perfil del usuario', error);
+    }
+}
 
-        // Guardar información adicional del usuario en Firestore
-        await setDoc(doc(db, 'users', user.uid), {
-            username: username,
-            createdAt: new Date().toISOString()
+// Registrar usuarios con email/usuario
+async function registerUser(username, password) {
+    const trimmedUsername = cleanUsername(username);
+    if (!trimmedUsername) {
+        alert('Ingresa un nombre de usuario');
+        return;
+    }
+    if (!password || password.length < 6) {
+        alert('La contrasena debe tener al menos 6 caracteres');
+        return;
+    }
+
+    try {
+        const email = `${trimmedUsername}@domain.com`;
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        await upsertUserProfile(userCredential.user, {
+            username: trimmedUsername,
+            provider: 'password'
         });
-
         window.location.href = 'app.html';
     } catch (error) {
         alert('Error al registrar: ' + error.message);
     }
 }
 
-// Función para iniciar sesión
+// Iniciar sesion con email/usuario
 async function loginUser(username, password) {
+    const trimmedUsername = cleanUsername(username);
+    if (!trimmedUsername || !password) {
+        alert('Completa usuario y contrasena');
+        return;
+    }
+
     try {
-        // Login con email (usando username como email para simplificar)
-        const userCredential = await signInWithEmailAndPassword(auth, `${username}@domain.com`, password);
+        await signInWithEmailAndPassword(auth, `${trimmedUsername}@domain.com`, password);
         window.location.href = 'app.html';
     } catch (error) {
-        alert('Error al iniciar sesión: ' + error.message);
+        alert('Error al iniciar sesion: ' + error.message);
+    }
+}
+
+// Iniciar sesion/registro con Google
+async function loginWithGoogle() {
+    try {
+        const result = await signInWithPopup(auth, googleProvider);
+        await upsertUserProfile(result.user, { provider: 'google' });
+        window.location.href = 'app.html';
+    } catch (error) {
+        console.error('Error con Google:', error);
+        alert('No pudimos iniciar sesion con Google: ' + error.message);
     }
 }
 
@@ -52,6 +106,8 @@ async function loginUser(username, password) {
 document.addEventListener('DOMContentLoaded', () => {
     const loginForm = document.getElementById('loginForm');
     const registerForm = document.getElementById('registerForm');
+    const googleLoginBtn = document.getElementById('googleLoginBtn');
+    const googleRegisterBtn = document.getElementById('googleRegisterBtn');
 
     if (loginForm) {
         loginForm.addEventListener('submit', (e) => {
@@ -70,10 +126,19 @@ document.addEventListener('DOMContentLoaded', () => {
             const confirmPassword = document.getElementById('confirmPassword').value;
 
             if (password !== confirmPassword) {
-                alert('Las contraseñas no coinciden');
+                alert('Las contrasenas no coinciden');
                 return;
             }
             registerUser(username, password);
         });
     }
+
+    [googleLoginBtn, googleRegisterBtn].forEach((btn) => {
+        if (btn) {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                loginWithGoogle();
+            });
+        }
+    });
 });

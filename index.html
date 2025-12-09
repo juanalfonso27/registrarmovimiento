@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#16a34a">
-    <title>AgroGestor - Iniciar Sesión</title>
+    <title>AgroGestor - Iniciar Sesion</title>
     <!-- Use relative manifest path so it works when served from local folder -->
     <link rel="manifest" href="manifest.json">
 
@@ -147,6 +147,62 @@
             text-decoration: underline;
         }
 
+        .social-login {
+            margin-top: 22px;
+        }
+
+        .divider {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: #6b7280;
+            font-size: 12px;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            margin-bottom: 12px;
+        }
+
+        .divider::before,
+        .divider::after {
+            content: "";
+            height: 1px;
+            flex: 1;
+            background: #e0e0e0;
+        }
+
+        .google-btn {
+            width: 100%;
+            padding: 12px;
+            background: #ffffff;
+            color: #1f2937;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+            transition: all 0.2s ease;
+        }
+
+        .google-btn i {
+            color: #db4437;
+        }
+
+        .google-btn:hover {
+            border-color: #cbd5e1;
+            transform: translateY(-1px);
+            box-shadow: 0 10px 26px rgba(0, 0, 0, 0.1);
+        }
+
+        .google-btn:active {
+            transform: translateY(0);
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+        }
+
         @media (max-width: 480px) {
             .form-box {
                 padding: 30px 20px;
@@ -167,7 +223,7 @@
 <body>
      <!-- Install App Banner -->
     <div id="install-banner" class="fixed top-0 left-0 right-0 bg-green-700 text-white p-3 flex flex-col items-center justify-center z-[9998] hidden">
-        <p class="text-sm mb-3">¿Te gustaría instalar AgroGestor para un acceso rápido?</p>
+        <p class="text-sm mb-3">Te gustaria instalar AgroGestor para un acceso rapido?</p>
         <div class="flex space-x-4">
             <button id="install-app-btn" class="bg-white text-green-700 px-5 py-2 rounded-lg text-base font-semibold hover:bg-gray-100 shadow-md">
                 Instalar
@@ -184,7 +240,7 @@
                     <i class="fas fa-map-marked-alt"></i>
                 </div>
                 <h2>AgroGestor</h2>
-                <p class="subtitle">Gestión Inteligente de Campos</p>
+                <p class="subtitle">Gestion inteligente de campos</p>
             </div>
             <form id="loginForm">
                 <div class="input-group">
@@ -192,15 +248,22 @@
                         <input type="text" id="username" placeholder="Nombre de usuario" required>
                     </div>
                     <div class="input-field">
-                        <input type="password" id="password" placeholder="Contraseña" required>
+                        <input type="password" id="password" placeholder="Contrasena" required>
                     </div>
                 </div>
                 <div class="btn-field">
                     <button type="submit" id="loginBtn">Ingresar</button>
                 </div>
+                <div class="social-login">
+                    <div class="divider"><span>o continua con</span></div>
+                    <button type="button" class="google-btn" id="googleLoginBtn">
+                        <i class="fab fa-google"></i>
+                        <span>Continuar con Google</span>
+                    </button>
+                </div>
             </form>
             <div class="extra-options">
-                <span>¿No tienes una cuenta? <a href="register.html" style="text-decoration: none; color: #1e9e5e;">Regístrate</a></span>
+                <span>No tienes una cuenta? <a href="register.html" style="text-decoration: none; color: #1e9e5e;">Registrate</a></span>
             </div>
         </div>
     </div>
@@ -267,3 +330,4 @@
     <script type="module" src="auth.js"></script>
 </body>
 </html>
+

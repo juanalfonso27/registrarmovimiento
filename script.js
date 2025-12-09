@@ -5,14 +5,59 @@ class AgroGPSApp {
   constructor() {
     this.map = null
     this.drawnItems = null
-    this.areas = JSON.parse(localStorage.getItem("agro-areas") || "[]")
-    this.products = JSON.parse(localStorage.getItem("agro-products") || "[]")
+    this.areas = []
+    this.products = []
     this.selectedArea = null
     this.userLocationMarker = null
     this.isLoading = true
     this.firestoreModule = null // To store the dynamically imported Firestore module
+    this.currentUserUid = null
 
     this.init()
+  }
+
+  getCurrentUid() {
+    const auth = window.firebaseAuth
+    return auth && auth.currentUser ? auth.currentUser.uid : this.currentUserUid
+  }
+
+  getStorageKeys(uid = null) {
+    const suffix = uid ? `-${uid}` : ''
+    return {
+      areas: `agro-areas${suffix}`,
+      products: `agro-products${suffix}`,
+    }
+  }
+
+  loadLocalDataForUser(uid) {
+    if (!uid) {
+      this.areas = []
+      this.products = []
+      return
+    }
+    const keys = this.getStorageKeys(uid)
+    try {
+      this.areas = JSON.parse(localStorage.getItem(keys.areas) || '[]')
+    } catch (e) {
+      this.areas = []
+    }
+    try {
+      this.products = JSON.parse(localStorage.getItem(keys.products) || '[]')
+    } catch (e) {
+      this.products = []
+    }
+  }
+
+  persistLocalData(uid) {
+    if (!uid) return
+    const keys = this.getStorageKeys(uid)
+    localStorage.setItem(keys.areas, JSON.stringify(this.areas))
+    localStorage.setItem(keys.products, JSON.stringify(this.products))
+  }
+
+  clearLocalData() {
+    this.areas = []
+    this.products = []
   }
 
   async init() {
@@ -268,6 +313,8 @@ class AgroGPSApp {
       onAuthStateChanged(window.firebaseAuth, async (user) => {
         if (user) {
           console.log('onAuthStateChanged: usuario autenticado', user.uid)
+          this.currentUserUid = user.uid
+          this.loadLocalDataForUser(user.uid)
           // Ensure firestore module available
           if (!this.firestoreModule) {
             try {
@@ -289,6 +336,8 @@ class AgroGPSApp {
           }
         } else {
           console.log('onAuthStateChanged: usuario no autenticado')
+          this.currentUserUid = null
+          this.clearLocalData()
           // Optionally: clear map layers or fall back to local storage data
           // this.loadAreas() will use localStorage if present
           try { this.loadAreas() } catch (e) { /* ignore */ }
@@ -1035,8 +1084,12 @@ class AgroGPSApp {
   }
 
   saveAreas() {
-    localStorage.setItem("agro-areas", JSON.stringify(this.areas))
-    localStorage.setItem("agro-products", JSON.stringify(this.products))
+    const uid = this.getCurrentUid()
+    if (!uid) {
+      console.warn('No hay usuario autenticado; no se guardaron datos locales para evitar mezclar cuentas.')
+      return
+    }
+    this.persistLocalData(uid)
   }
 
   // Per-document Firestore operations (efficient — write only what changed)
@@ -1046,18 +1099,20 @@ class AgroGPSApp {
     const auth = window.firebaseAuth
     const { doc, setDoc } = this.firestoreModule
     try {
-      // Prefer owner UID when available to enforce security rules by UID
       const ownerUid = auth && auth.currentUser ? auth.currentUser.uid : null
-      const ownerPath = ownerUid ? ownerUid : encodeURIComponent(area.owner)
+      if (!ownerUid) {
+        console.warn('saveAreaToFirestore omitido: no hay usuario autenticado.')
+        return
+      }
+      const ownerPath = ownerUid
 
       // Ensure owner doc exists (store both display name and uid when possible)
       const ownerRef = doc(db, `propietario/${ownerPath}`)
-      const ownerPayload = ownerUid ? { owner: area.owner, ownerUid: ownerUid, updated: new Date().toISOString() } : { owner: area.owner, updated: new Date().toISOString() }
+      const ownerPayload = { owner: area.owner, ownerUid: ownerUid, updated: new Date().toISOString() }
       await setDoc(ownerRef, ownerPayload, { merge: true })
 
       const ref = doc(db, `propietario/${ownerPath}/areas/${area.id}`)
-      const payload = Object.assign({}, area, { coordinates: JSON.stringify(area.coordinates) })
-      if (ownerUid) payload.ownerUid = ownerUid
+      const payload = Object.assign({}, area, { coordinates: JSON.stringify(area.coordinates), ownerUid })
 
       // Debug: log path and payload (avoid logging huge coordinate arrays in prod)
       console.log('Saving area to Firestore at', ref.path || '(no path)', 'payload preview:', {
@@ -1089,7 +1144,11 @@ class AgroGPSApp {
     const { doc, deleteDoc } = this.firestoreModule
     try {
       const ownerUid = auth && auth.currentUser ? auth.currentUser.uid : null
-      const ownerPath = ownerUid ? ownerUid : encodeURIComponent(owner)
+      if (!ownerUid) {
+        console.warn('deleteAreaFromFirestore omitido: no hay usuario autenticado.')
+        return
+      }
+      const ownerPath = ownerUid
       await deleteDoc(doc(db, `propietario/${ownerPath}/areas/${areaId}`))
     } catch (err) {
       console.warn('deleteAreaFromFirestore error:', err && err.message)
@@ -1107,16 +1166,19 @@ class AgroGPSApp {
     const { doc, setDoc } = this.firestoreModule
     try {
       const ownerUid = auth && auth.currentUser ? auth.currentUser.uid : null
-      const ownerPath = ownerUid ? ownerUid : encodeURIComponent(area.owner)
+      if (!ownerUid) {
+        console.warn('saveProductToFirestore omitido: no hay usuario autenticado.')
+        return
+      }
+      const ownerPath = ownerUid
 
       // Ensure owner doc exists
       const ownerRef = doc(db, `propietario/${ownerPath}`)
-      const ownerPayload = ownerUid ? { owner: area.owner, ownerUid: ownerUid, updated: new Date().toISOString() } : { owner: area.owner, updated: new Date().toISOString() }
+      const ownerPayload = { owner: area.owner, ownerUid: ownerUid, updated: new Date().toISOString() }
       await setDoc(ownerRef, ownerPayload, { merge: true })
 
       const ref = doc(db, `propietario/${ownerPath}/products/${product.id}`)
-      const productPayload = Object.assign({}, product)
-      if (ownerUid) productPayload.ownerUid = ownerUid
+      const productPayload = Object.assign({}, product, { ownerUid })
 
       console.log('Saving product to Firestore at', ref.path || '(no path)', 'product preview:', {
         id: productPayload.id,
@@ -1145,7 +1207,11 @@ class AgroGPSApp {
     const { doc, deleteDoc } = this.firestoreModule
     try {
       const ownerUid = auth && auth.currentUser ? auth.currentUser.uid : null
-      const ownerPath = ownerUid ? ownerUid : encodeURIComponent(owner)
+      if (!ownerUid) {
+        console.warn('deleteProductFromFirestore omitido: no hay usuario autenticado.')
+        return
+      }
+      const ownerPath = ownerUid
       await deleteDoc(doc(db, `propietario/${ownerPath}/products/${productId}`))
     } catch (err) {
       console.warn('deleteProductFromFirestore error:', err && err.message)
@@ -1156,79 +1222,69 @@ class AgroGPSApp {
   // Save current areas/products to Firestore. Uses dynamic imports so script.js stays non-module.
   async saveToFirestore() {
     if (!window.firebaseDB || !this.firestoreModule) return
+    const auth = window.firebaseAuth
+    const ownerUid = auth && auth.currentUser ? auth.currentUser.uid : null
+    if (!ownerUid) {
+      console.warn('saveToFirestore omitido: no hay usuario autenticado.')
+      return
+    }
+
     const db = window.firebaseDB
     const { doc, setDoc, collection, getDocs, deleteDoc } = this.firestoreModule
-  // Group areas and products by owner and write under propietario/{owner}/areas and propietario/{owner}/products
-    const owners = {}
-    // Group by owner path: prefer ownerUid (if present on area), otherwise fallback to encoded owner name
-    for (const a of this.areas) {
-      const ownerUid = a.ownerUid || null
-      const ownerKey = ownerUid ? ownerUid : encodeURIComponent(a.owner)
-      owners[ownerKey] = owners[ownerKey] || { displayName: a.owner, areas: [], products: [] }
-      owners[ownerKey].areas.push(a)
-    }
-    for (const p of this.products) {
-      const areaObj = this.areas.find((a) => a.id === p.areaId) || {}
-      const ownerUid = areaObj.ownerUid || null
-      const ownerKey = ownerUid ? ownerUid : encodeURIComponent(areaObj.owner || '')
-      if (!ownerKey) continue
-      owners[ownerKey] = owners[ownerKey] || { displayName: areaObj.owner || '', areas: [], products: [] }
-      owners[ownerKey].products.push(p)
-    }
+    const basePath = `propietario/${ownerUid}`
 
-    for (const ownerKey of Object.keys(owners)) {
-      if (!ownerKey) continue
-      const ownerAreas = owners[ownerKey].areas
-      const ownerProducts = owners[ownerKey].products
+    const ownerAreas = (this.areas || []).map((a) => Object.assign({}, a, { ownerUid }))
+    const ownerProducts = (this.products || []).map((p) => Object.assign({}, p, { ownerUid }))
+    const ownerName = ownerAreas[0]?.owner || ownerProducts[0]?.owner || 'Propietario'
 
-      const basePath = `propietario/${ownerKey}`
+    // Ensure owner doc exists
+    await setDoc(doc(db, basePath), { owner: ownerName, ownerUid, updated: new Date().toISOString() }, { merge: true })
 
-      // Areas
-      for (const a of ownerAreas) {
-        const ref = doc(db, `${basePath}/areas/${a.id}`)
-        const payload = Object.assign({}, a, { coordinates: JSON.stringify(a.coordinates) })
-        console.log('Batch save area ->', ref.path, payload.id, payload.name)
-        try {
-          await setDoc(ref, payload)
-        } catch (innerErr) {
-          console.error('Error saving area in batch for', ref.path, innerErr)
-        }
-      }
-
-      // Cleanup remote areas for this owner
+    // Areas
+    for (const a of ownerAreas) {
+      const ref = doc(db, `${basePath}/areas/${a.id}`)
+      const payload = Object.assign({}, a, { coordinates: JSON.stringify(a.coordinates), ownerUid })
+      console.log('Batch save area ->', ref.path, payload.id, payload.name)
       try {
-        const remoteAreasSnap = await getDocs(collection(db, `${basePath}/areas`))
-        for (const d of remoteAreasSnap.docs) {
-          if (!ownerAreas.find((a) => a.id === d.id)) {
-            await deleteDoc(doc(db, `${basePath}/areas/${d.id}`))
-          }
-        }
-      } catch (err) {
-        // ignore
+        await setDoc(ref, payload)
+      } catch (innerErr) {
+        console.error('Error saving area in batch for', ref.path, innerErr)
       }
+    }
 
-      // Products
-      for (const p of ownerProducts) {
-        const ref = doc(db, `${basePath}/products/${p.id}`)
-        console.log('Batch save product ->', ref.path, p.id, p.name)
-        try {
-          await setDoc(ref, p)
-        } catch (innerErr) {
-          console.error('Error saving product in batch for', ref.path, innerErr)
+    // Cleanup remote areas for this owner
+    try {
+      const remoteAreasSnap = await getDocs(collection(db, `${basePath}/areas`))
+      for (const d of remoteAreasSnap.docs) {
+        if (!ownerAreas.find((a) => a.id === d.id)) {
+          await deleteDoc(doc(db, `${basePath}/areas/${d.id}`))
         }
       }
+    } catch (err) {
+      // ignore
+    }
 
-      // Cleanup remote products for this owner
+    // Products
+    for (const p of ownerProducts) {
+      const ref = doc(db, `${basePath}/products/${p.id}`)
+      console.log('Batch save product ->', ref.path, p.id, p.name)
       try {
-        const remoteProdSnap = await getDocs(collection(db, `${basePath}/products`))
-        for (const d of remoteProdSnap.docs) {
-          if (!ownerProducts.find((p) => p.id === d.id)) {
-            await deleteDoc(doc(db, `${basePath}/products/${d.id}`))
-          }
-        }
-      } catch (err) {
-        // ignore
+        await setDoc(ref, Object.assign({}, p, { ownerUid }))
+      } catch (innerErr) {
+        console.error('Error saving product in batch for', ref.path, innerErr)
       }
+    }
+
+    // Cleanup remote products for this owner
+    try {
+      const remoteProdSnap = await getDocs(collection(db, `${basePath}/products`))
+      for (const d of remoteProdSnap.docs) {
+        if (!ownerProducts.find((p) => p.id === d.id)) {
+          await deleteDoc(doc(db, `${basePath}/products/${d.id}`))
+        }
+      }
+    } catch (err) {
+      // ignore
     }
   }
 
@@ -1243,7 +1299,7 @@ class AgroGPSApp {
 
     if (!currentUser) {
       // Avoid reading the root 'propietario' collection which contains all users' data.
-      console.warn('No hay usuario autenticado: se omite la sincronización desde Firestore para evitar exponer datos de otros usuarios. Usando datos locales.')
+      console.warn('No hay usuario autenticado: se omite la sincronizacion desde Firestore para evitar exponer datos de otros usuarios. Usando datos locales.')
       return
     }
 
@@ -1254,6 +1310,11 @@ class AgroGPSApp {
 
     try {
       const ownerId = currentUser.uid
+      this.currentUserUid = ownerId
+      // Ensure we start from the local cache for this user before merging remote data
+      this.loadLocalDataForUser(ownerId)
+      const localAreas = [...this.areas]
+      const localProducts = [...this.products]
       const areasSnap = await getDocs(collection(db, `propietario/${ownerId}/areas`))
       const prodsSnap = await getDocs(collection(db, `propietario/${ownerId}/products`))
 
@@ -1263,23 +1324,25 @@ class AgroGPSApp {
         if (data && typeof data.coordinates === 'string') {
           try { data.coordinates = JSON.parse(data.coordinates) } catch (err) { /* ignore invalid */ }
         }
-        areasForOwner.push(data)
+        areasForOwner.push(Object.assign({}, data, { ownerUid: ownerId }))
       }
 
       const productsForOwner = []
       for (const d of prodsSnap.docs) {
-        productsForOwner.push(d.data())
+        const data = d.data()
+        productsForOwner.push(Object.assign({}, data, { ownerUid: ownerId }))
       }
 
-      // Replace local arrays only with the authenticated user's data
-      if (areasForOwner.length > 0 || productsForOwner.length > 0) {
+      const hasRemote = areasForOwner.length > 0 || productsForOwner.length > 0
+      if (hasRemote) {
         this.areas = areasForOwner
         this.products = productsForOwner
-        localStorage.setItem('agro-areas', JSON.stringify(this.areas))
-        localStorage.setItem('agro-products', JSON.stringify(this.products))
       } else {
-        console.log('No se encontraron áreas o productos en Firestore para el usuario', ownerId)
+        this.areas = (localAreas || []).map((a) => Object.assign({}, a, { ownerUid: ownerId }))
+        this.products = (localProducts || []).map((p) => Object.assign({}, p, { ownerUid: ownerId }))
       }
+
+      this.persistLocalData(ownerId)
     } catch (err) {
       console.warn('Error al sincronizar desde Firestore (usuario):', err && err.message)
       console.error(err)
